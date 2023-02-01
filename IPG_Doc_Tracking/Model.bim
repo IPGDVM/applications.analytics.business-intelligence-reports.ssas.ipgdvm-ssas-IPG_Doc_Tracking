@@ -1,0 +1,2853 @@
+{
+  "name": "SemanticModel",
+  "compatibilityLevel": 1500,
+  "model": {
+    "culture": "en-US",
+    "dataSources": [
+      {
+        "name": "actis_db",
+        "connectionString": "Provider=MSDASQL;DSN=PostgreSQL_actis",
+        "impersonationMode": "impersonateServiceAccount",
+        "annotations": [
+          {
+            "name": "ConnectionEditUISource",
+            "value": "Others"
+          }
+        ]
+      },
+      {
+        "name": "IBI",
+        "connectionString": "Provider=MSDASQL;Persist Security Info=False;DSN=iBI DaaS",
+        "impersonationMode": "impersonateServiceAccount",
+        "annotations": [
+          {
+            "name": "ConnectionEditUISource",
+            "value": "Others"
+          }
+        ]
+      }
+    ],
+    "tables": [
+      {
+        "name": "QueryDocTracking",
+        "columns": [
+          {
+            "name": "f_doc",
+            "dataType": "string",
+            "sourceColumn": "f_doc",
+            "sourceProviderType": "VarChar"
+          },
+          {
+            "name": "f_intel_id",
+            "dataType": "string",
+            "sourceColumn": "f_intel_id",
+            "sourceProviderType": "VarChar"
+          },
+          {
+            "name": "f_code",
+            "dataType": "string",
+            "sourceColumn": "f_code",
+            "sourceProviderType": "VarChar"
+          },
+          {
+            "name": "f_url",
+            "dataType": "string",
+            "sourceColumn": "f_url",
+            "sourceProviderType": "VarChar",
+            "dataCategory": "WebUrl"
+          },
+          {
+            "name": "f_active",
+            "dataType": "string",
+            "sourceColumn": "f_active",
+            "sourceProviderType": "VarChar"
+          },
+          {
+            "name": "f_api_url",
+            "dataType": "string",
+            "sourceColumn": "f_api_url",
+            "sourceProviderType": "VarChar",
+            "dataCategory": "WebUrl"
+          },
+          {
+            "type": "calculated",
+            "name": "intel_id_int",
+            "dataType": "int64",
+            "isDataTypeInferred": true,
+            "expression": " IFERROR(INT(QueryDocTracking[f_intel_id]), BLANK()) "
+          },
+          {
+            "type": "calculated",
+            "name": "doc_value",
+            "dataType": "string",
+            "isDataTypeInferred": true,
+            "expression": [
+              " SWITCH(",
+              "LOWER(QueryDocTracking[f_doc]), ",
+              "\"datasheet\", \"configuration\", ",
+              "\"databook\", \"configuration\", ",
+              "\"integrationguide\", \"milestone\", ",
+              "\"ic-concept\", \"milestone\", ",
+              "\"icr-concept refresh\", \"milestone\", ",
+              "\"trm\", \"TRM\",",
+              "\"userguide\", \"milestone\",",
+              "\"modelguide\", \"milestone\", ",
+              "\"[others]\", \"milestone\", \"milestone\") "
+            ]
+          },
+          {
+            "type": "calculated",
+            "name": "visible",
+            "dataType": "int64",
+            "isDataTypeInferred": true,
+            "expression": [
+              " SWITCH(TRUE(), ",
+              "AND(QueryDocTracking[doc_value] = \"milestone\", LOOKUPVALUE(CarbonCombined[IDTypeUsed], CarbonCombined[ID], [intel_id_int]) = \"milestone\"), 1, ",
+              "AND(QueryDocTracking[doc_value] = \"TRM\", LOOKUPVALUE(CarbonCombined[IDTypeUsed], CarbonCombined[ID], [intel_id_int]) = \"TRM\"), 1, ",
+              "AND(QueryDocTracking[doc_value] = \"configuration\", LOOKUPVALUE(CarbonCombined[IDTypeUsed], CarbonCombined[ID],  [intel_id_int]) = \"configuration\"), 1,",
+              "0)"
+            ]
+          },
+          {
+            "type": "calculated",
+            "name": "code",
+            "dataType": "string",
+            "isDataTypeInferred": true,
+            "expression": " IFERROR(IF(LEN(QueryDocTracking[f_code]) = 3, QueryDocTracking[f_code], BLANK()), BLANK())"
+          },
+          {
+            "type": "calculated",
+            "name": "code_middle",
+            "dataType": "int64",
+            "isDataTypeInferred": true,
+            "expression": " IFERROR(IF(NOT(ISBLANK([code])), CONVERT(MID([code], 2, 1), INTEGER), BLANK()), BLANK())",
+            "formatString": "0"
+          },
+          {
+            "type": "calculated",
+            "name": "active_int",
+            "dataType": "int64",
+            "isDataTypeInferred": true,
+            "expression": " IFERROR(INT(QueryDocTracking[f_active]), BLANK()) "
+          },
+          {
+            "name": "f_user_title",
+            "dataType": "string",
+            "sourceColumn": "f_user_title"
+          },
+          {
+            "name": "f_file_created",
+            "dataType": "dateTime",
+            "sourceColumn": "f_file_created"
+          },
+          {
+            "type": "calculated",
+            "name": "CreatedWW",
+            "dataType": "int64",
+            "isDataTypeInferred": true,
+            "expression": " Lookupvalue(QueryDateWW[Intel Year-Work Week], QueryDateWW[date], Format([f_file_created], \"mm/dd/yyyy\"))"
+          },
+          {
+            "name": "f_archive",
+            "dataType": "string",
+            "sourceColumn": "f_archive"
+          },
+          {
+            "name": "f_end_time",
+            "dataType": "dateTime",
+            "sourceColumn": "f_end_time"
+          },
+          {
+            "type": "calculated",
+            "name": "duplicate",
+            "dataType": "int64",
+            "isDataTypeInferred": true,
+            "expression": " If(LOOKUPVALUE(CarbonCombined[finalColor], CarbonCombined[ID], [intel_id_int]) = \"purple\" && [occurance] > 1, 1, 0)"
+          },
+          {
+            "type": "calculated",
+            "name": "occurance",
+            "dataType": "int64",
+            "isDataTypeInferred": true,
+            "expression": [
+              "",
+              "Var numID = [intel_id_int]",
+              "Var docType1 = [f_doc]",
+              "RETURN",
+              "",
+              "CALCULATE(",
+              "    COUNTROWS(QueryDocTracking),",
+              "    all(QueryDocTracking),",
+              "    QueryDocTracking[intel_id_int] = numID, QueryDocTracking[f_doc] = docType1",
+              ")"
+            ]
+          }
+        ],
+        "partitions": [
+          {
+            "name": "QueryDocTracking",
+            "dataView": "full",
+            "source": {
+              "type": "query",
+              "query": [
+                "select distinct",
+                "CASE WHEN f_doc = 'ReleaseNotes' or f_doc = 'releaseNotes' THEN 'ReleaseNote' ",
+                "when f_doc in ('dataSheet', 'datasheet') then 'DataSheet'",
+                "ELSE f_doc END as f_doc",
+                ",f_intel_id",
+                ",f_code",
+                ",f_url",
+                ",f_active",
+                ",f_api_url",
+                ",f_user_title",
+                "--,f_user_principal_name",
+                ",f_file_created",
+                ",f_archive",
+                ",f_end_time",
+                "from t_m365_doc",
+                "where 1=1 and f_active = '1'",
+                "and length(f_intel_id) > 9",
+                "and f_end_time is null"
+              ],
+              "dataSource": "actis_db"
+            },
+            "annotations": [
+              {
+                "name": "QueryEditorSerialization",
+                "value": [
+                  "<?xml version=\"1.0\" encoding=\"UTF-16\"?><Gemini xmlns=\"QueryEditorSerialization\"><AnnotationContent><![CDATA[<RSQueryCommandText>select distinct",
+                  "CASE WHEN f_doc = 'ReleaseNotes' or f_doc = 'releaseNotes' THEN 'ReleaseNote' ",
+                  "when f_doc in ('dataSheet', 'datasheet') then 'DataSheet'",
+                  "ELSE f_doc END as f_doc",
+                  ",f_intel_id",
+                  ",f_code",
+                  ",f_url",
+                  ",f_active",
+                  ",f_api_url",
+                  ",f_user_title",
+                  "--,f_user_principal_name",
+                  ",f_file_created",
+                  ",f_archive",
+                  ",f_end_time",
+                  "from t_m365_doc",
+                  "where 1=1 and f_active = '1'",
+                  "and length(f_intel_id) > 9",
+                  "and f_end_time is null</RSQueryCommandText><RSQueryCommandType>Text</RSQueryCommandType><RSQueryDesignState></RSQueryDesignState>]]></AnnotationContent></Gemini>"
+                ]
+              }
+            ]
+          }
+        ],
+        "measures": [
+          {
+            "name": "Measure 2",
+            "expression": " DISTINCTCOUNT(QueryDocTracking[intel_id_int])"
+          },
+          {
+            "name": "DuplicateExists",
+            "expression": " CALCULATE(COUNTROWS(FILTER(QueryDocTracking, [duplicate] = 1)))"
+          }
+        ],
+        "annotations": [
+          {
+            "name": "_TM_ExtProp_QueryDefinition",
+            "value": [
+              "select distinct",
+              "CASE WHEN f_doc = 'ReleaseNotes' or f_doc = 'releaseNotes' THEN 'ReleaseNote' ",
+              "when f_doc in ('dataSheet', 'datasheet') then 'DataSheet'",
+              "ELSE f_doc END as f_doc",
+              ",f_intel_id",
+              ",f_code",
+              ",f_url",
+              ",f_active",
+              ",f_api_url",
+              ",f_user_title",
+              "--,f_user_principal_name",
+              ",f_file_created",
+              ",f_archive",
+              ",f_end_time",
+              "from t_m365_doc",
+              "where 1=1 and f_active = '1'",
+              "and length(f_intel_id) > 9",
+              "and f_end_time is null"
+            ]
+          },
+          {
+            "name": "_TM_ExtProp_DbTableName",
+            "value": "QueryDocTracking"
+          },
+          {
+            "name": "QueryEditorSerialization",
+            "value": [
+              "<?xml version=\"1.0\" encoding=\"UTF-16\"?><Gemini xmlns=\"QueryEditorSerialization\"><AnnotationContent><![CDATA[<RSQueryCommandText>select distinct",
+              "CASE WHEN f_doc = 'ReleaseNotes' or f_doc = 'releaseNotes' THEN 'ReleaseNote' ",
+              "when f_doc in ('dataSheet', 'datasheet') then 'DataSheet'",
+              "ELSE f_doc END as f_doc",
+              ",f_intel_id",
+              ",f_code",
+              ",f_url",
+              ",f_active",
+              ",f_api_url",
+              ",f_user_title",
+              "--,f_user_principal_name",
+              ",f_file_created",
+              ",f_archive",
+              ",f_end_time",
+              "from t_m365_doc",
+              "where 1=1 and f_active = '1'",
+              "and length(f_intel_id) > 9",
+              "and f_end_time is null</RSQueryCommandText><RSQueryCommandType>Text</RSQueryCommandType><RSQueryDesignState></RSQueryDesignState>]]></AnnotationContent></Gemini>"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "CarbonCombined",
+        "columns": [
+          {
+            "name": "ID",
+            "dataType": "int64",
+            "sourceColumn": "ID",
+            "sourceProviderType": "BigInt"
+          },
+          {
+            "name": "Complete",
+            "dataType": "string",
+            "sourceColumn": "Complete"
+          },
+          {
+            "name": "Configuration",
+            "dataType": "string",
+            "sourceColumn": "Configuration"
+          },
+          {
+            "name": "Domain",
+            "dataType": "string",
+            "sourceColumn": "Domain"
+          },
+          {
+            "name": "Drop",
+            "dataType": "string",
+            "sourceColumn": "Drop"
+          },
+          {
+            "name": "DropType",
+            "dataType": "string",
+            "sourceColumn": "DropType"
+          },
+          {
+            "name": "Generation",
+            "dataType": "string",
+            "sourceColumn": "Generation"
+          },
+          {
+            "name": "IpFamily",
+            "dataType": "string",
+            "sourceColumn": "IpFamily"
+          },
+          {
+            "name": "IpType",
+            "dataType": "string",
+            "sourceColumn": "IpType"
+          },
+          {
+            "name": "IPXFQN",
+            "dataType": "string",
+            "sourceColumn": "IPXFQN"
+          },
+          {
+            "name": "Process",
+            "dataType": "string",
+            "sourceColumn": "Process"
+          },
+          {
+            "name": "PorYYYYWW",
+            "dataType": "int64",
+            "sourceColumn": "PorYYYYWW"
+          },
+          {
+            "name": "TrendYYYYWW",
+            "dataType": "int64",
+            "sourceColumn": "TrendYYYYWW"
+          },
+          {
+            "name": "RequestingProducts",
+            "dataType": "string",
+            "sourceColumn": "RequestingProducts"
+          },
+          {
+            "name": "UsingProducts",
+            "dataType": "string",
+            "sourceColumn": "UsingProducts"
+          },
+          {
+            "name": "DevOrg",
+            "dataType": "string",
+            "sourceColumn": "DevOrg"
+          },
+          {
+            "name": "IDTypeUsed",
+            "dataType": "string",
+            "sourceColumn": "IDTypeUsed"
+          },
+          {
+            "type": "calculated",
+            "name": "LengthSoC",
+            "dataType": "int64",
+            "isDataTypeInferred": true,
+            "expression": " LEN(CarbonCombined[RequestingProducts])-LEN(SUBSTITUTE(CarbonCombined[RequestingProducts],\",\",\"\")) + 1"
+          },
+          {
+            "type": "calculated",
+            "name": "LengthUsingProducts",
+            "dataType": "int64",
+            "isDataTypeInferred": true,
+            "expression": " LEN(CarbonCombined[UsingProducts])-LEN(SUBSTITUTE(CarbonCombined[UsingProducts],\",\",\"\")) + 1"
+          },
+          {
+            "name": "IPSupplier",
+            "dataType": "string",
+            "sourceColumn": "IPSupplier"
+          },
+          {
+            "name": "SubOrg",
+            "dataType": "string",
+            "sourceColumn": "SubOrg"
+          },
+          {
+            "name": "DocType",
+            "dataType": "string",
+            "sourceColumn": "DocType"
+          },
+          {
+            "type": "calculated",
+            "name": "UniqueKey",
+            "dataType": "string",
+            "isDataTypeInferred": true,
+            "expression": " IF([DocType] = \"TRM\" && [IDTypeUsed] = \"TRM\",  [Id] & \"_TRM_\" & [UsingProducts],  [Id] & \"_\" & [DocType])"
+          },
+          {
+            "type": "calculated",
+            "name": "url",
+            "dataType": "string",
+            "isDataTypeInferred": true,
+            "expression": " IFError(IF([DocType] = \"TRM\" && [IDTypeUsed] = \"TRM\", LookupValue(QueryUnion[url], QueryUnion[UniqueKey], CONVERT([ID], STRING)&\"_TRM\"), LOOKUPVALUE(QueryUnion[url], QueryUnion[UniqueKey], CarbonCombined[UniqueKey])), \"duplicate\")"
+          },
+          {
+            "type": "calculated",
+            "name": "code",
+            "dataType": "int64",
+            "isDataTypeInferred": false,
+            "expression": " IfError(IF([DocType] = \"TRM\" && [IDTypeUsed] = \"TRM\", Lookupvalue(QueryUnion[code], QueryUnion[UniqueKey], CONVERT([ID], STRING)&\"_TRM\"), Lookupvalue(QueryUnion[code], QueryUnion[UniqueKey], CarbonCombined[UniqueKey])), \"999\") // 999 is for duplicates ids but different QueryUnion[code]"
+          },
+          {
+            "type": "calculated",
+            "name": "docExists",
+            "dataType": "string",
+            "isDataTypeInferred": true,
+            "expression": " If([url] = \"duplicate\", \"duplicate\", If(Not(IsBlank([url])), \"true\", \"false\"))"
+          },
+          {
+            "type": "calculated",
+            "name": "middle_digit",
+            "dataType": "int64",
+            "isDataTypeInferred": true,
+            "expression": " IFERROR(IF(NOT(ISBLANK([code])), CONVERT(MID([code], 2, 1), INTEGER), BLANK()), BLANK())"
+          },
+          {
+            "type": "calculated",
+            "name": "existingColor",
+            "dataType": "string",
+            "isDataTypeInferred": true,
+            "expression": [
+              " IF([docExists] = \"duplicate\", \"purple\", If(AND([docExists] = \"true\", [code] = 0), \"gray\", IF([docExists] = \"true\" && [DocType] = \"DataSheet\" && [DS_IE_Date]>= [currentSeqnbrWW], \"green\", IF([docExists] = \"true\" && [DocType] = \"DataSheet\" && [DS_IE_Date] < [currentSeqnbrWW] && ISODD(CarbonCombined[middle_digit]), \"yellow\", IF([docExists] = \"true\" && [DocType] = \"DataSheet\" && [DS_IE_Date] < [currentSeqnbrWW] && ISEVEN(CarbonCombined[middle_digit]), \"green\",",
+              "",
+              "IF([DocType] = \"TRM\" && [docExists] = \"true\" && CarbonCombined[TRM_IE_Date]  < [currentSeqnbrWW] && [trendSeq] < [currentWeek]&& ISODD([middle_digit]), \"yellow\", IF([DocType] = \"TRM\" && [docExists] = \"true\", \"green\", IF(And(ISBLANK(CarbonCombined[middle_digit]), [docExists] = \"true\"), \"yellow\", IF(ISBLANK(CarbonCombined[middle_digit]), \"\", IF(ISEVEN(CarbonCombined[middle_digit]), \"green\", (IF(ISODD(CarbonCombined[middle_digit]), \"yellow\", \"blue\"))))))))))))"
+            ]
+          },
+          {
+            "type": "calculated",
+            "name": "finalColor",
+            "dataType": "string",
+            "isDataTypeInferred": true,
+            "expression": " IF([docExists] = \"false\", [doc_not_exists_color], If([docExists] = \"true\", [existingColor], \"purple\")) // If doc exists, use that color, else use doc does not exist color"
+          },
+          {
+            "name": "Gladius",
+            "dataType": "string",
+            "sourceColumn": "Gladius"
+          },
+          {
+            "type": "calculated",
+            "name": "TRM_IE_Date",
+            "dataType": "int64",
+            "isDataTypeInferred": true,
+            "expression": " LOOKUPVALUE(QueryTRM[minIE_WWSeq], QueryTRM[UniqueKey], [UniqueKey])"
+          },
+          {
+            "type": "calculated",
+            "name": "trendSeq",
+            "dataType": "int64",
+            "isDataTypeInferred": true,
+            "expression": " IF([DocType] = \"TRM\" && [IDTypeUsed] = \"TRM\", LOOKUPVALUE(QueryTRM[IAC_WWSeq], QueryTRM[UniqueKey], [UniqueKey]), IF([DocType] = \"Datasheet\" && [IDTypeUsed] = \"configuration\", LOOKUPVALUE(QueryDS[IC_WWSeq], QueryDS[UniqueKey], [UniqueKey]), IF(NOT(ISBLANK([DocType])), LOOKUPVALUE(QueryScorecard[trendSeq], QueryScorecard[UniqueKey], [UniqueKey])))) // TrendDate for the \"base\" ID we are using"
+          },
+          {
+            "type": "calculated",
+            "name": "DS_IE_Date",
+            "dataType": "int64",
+            "isDataTypeInferred": true,
+            "expression": " LOOKUPVALUE(QueryDS[IE_WWSeq], QueryDS[UniqueKey], [UniqueKey])"
+          },
+          {
+            "type": "calculated",
+            "name": "doc_not_exists_color",
+            "dataType": "string",
+            "isDataTypeInferred": true,
+            "expression": [
+              " IF([DocType] = \"TRM\" && [IDTypeUsed] = \"TRM\", IF([trendSeq] >= [currentSeqnbrWW] && [TRM_IE_Date] >= [currentSeqnbrWW], \"gray\", IF([TRM_IE_Date] < [currentSeqnbrWW], \"red\", \"red\")), ",
+              "IF([DocType] = \"DataSheet\", IF([trendSeq] >= [currentSeqnbrWW] && [DS_IE_Date] >= [currentSeqnbrWW], \"gray\", \"red\"),",
+              "IF(Not(IsBlank([DocType])), IF(NOT(ISBLANK([trendSeq])), IF(OR([Complete] = \"Yes\", AND([trendSeq] < [currentSeqnbrWW], [Complete] = \"No\")), \"red\", IF(AND([Complete] = \"No\", [trendSeq] >= [currentSeqnbrWW]), \"gray\")), \"gray\"), BLANK()",
+              ")))",
+              "",
+              "",
+              "",
+              "// OLD : IF([DocType] = \"TRM\",  LOOKUPVALUE(QueryTRM[doc_not_exist_color], QueryTRM[UniqueKey], CarbonCombined[UniqueKey]), IF([DocType] = \"Datasheet\", LOOKUPVALUE(QueryDS[doc_not_exist_color], QueryDS[UniqueKey], [UniqueKey]), LOOKUPVALUE(QueryScorecard[color], QueryScorecard[ID], CarbonCombined[ID])))))))"
+            ]
+          },
+          {
+            "name": "Revision",
+            "dataType": "string",
+            "sourceColumn": "Revision"
+          }
+        ],
+        "partitions": [
+          {
+            "name": "QueryCombined",
+            "dataView": "full",
+            "source": {
+              "type": "query",
+              "query": [
+                "select *, ",
+                "case ",
+                "\twhen [IDTypeUsed] = 'configuration' then 'DataSheet' ",
+                "\twhen [Drop] like 'UV%' then 'integrationGuide'  ",
+                "\twhen [Drop] = 'IP Execution Commit (IE)' then 'IE-Commit' ",
+                "\twhen [Drop] = 'eFV' then 'integrationGuide'  ",
+                "\twhen [Drop] = 'FV' then 'integrationGuide' ",
+                "\twhen ([IDTypeUsed] = 'TRM' and [Drop] = 'IP Architecture Complete (IAC)') then 'TRM' ",
+                "\twhen [Drop] = 'IP Concept (IC)' then 'IP-Concept' ",
+                "\twhen [Drop] = 'IP Concept Refresh (ICR)' then 'IC-Refresh' ",
+                "\telse Null ",
+                "end as [DocType], ",
+                "case ",
+                "\twhen ([configuration] in (select distinct configuration from v_ipg_carbon_milestone ",
+                "\t\t\t\twhere [drop] = 'IP Execution Commit (IE)') and (([IDTypeUsed] = 'milestone' and [Drop] <>'IP Architecture Complete (IAC)')",
+                "\t\t\t\tor ([IDTypeUsed] = 'TRM' and [Drop] ='IP Architecture Complete (IAC)') or ([IDTypeUsed] = 'configuration')))",
+                "",
+                "",
+                "",
+                "then 'post-gladius'",
+                "\telse 'pre-gladius' ",
+                "end as [Gladius]",
+                "from ",
+                "",
+                "-- this is where the UNION data starts ",
+                "(select distinct [MilestoneId] as [ID]",
+                ", [Complete]",
+                ", 'milestone' as [IDTypeUsed]",
+                ", carbon.[Configuration]",
+                ", [DevGroup] as IPSupplier",
+                ", [DevSubOrg] as SubOrg",
+                ", [Domain]",
+                ", [Drop]",
+                ", [DropType]",
+                ", [Generation]",
+                ", [IPFamily]",
+                ", [IpType]",
+                ", [IPXFQN]",
+                ", [Process]",
+                ", [PorYYYYWW]",
+                ", [TrendYYYYWW]",
+                ", [RequestingProducts]",
+                ", [UsingProducts]",
+                ", [DevOrg]",
+                ", [Revision]",
+                "from [V_IPG_Carbon_Milestone] carbon",
+                "join (select distinct  ipconfigurationid from [V_IPG_CARBON_IPCONFIGURATION] where 1=1",
+                "and IsRequestable  = 'yes') ipg ",
+                "ON carbon.ipconfigurationid   = ipg.ipconfigurationid ",
+                "where 1=1 and ([DevOrg] = 'ipg' or [DevSubOrg] = 'DTEG') and [Drop] <> 'IP Architecture Complete (IAC)'",
+                "",
+                "union ",
+                "select distinct carbon.[IPConfigurationId] as [ID] ",
+                ", null as [Complete] ",
+                ", 'configuration' as [IDTypeUsed]",
+                ", [Configuration]",
+                ", [DevGroup] as IPSupplier",
+                ", [DevSubOrg] as SubOrg",
+                ", [Domain]",
+                ", null as [Drop]",
+                ", null as [DropType] ",
+                ", [Generation]",
+                ", [IPFamily]",
+                ", [IpType]",
+                ", null as [IPXFQN]",
+                ", null as [Process]",
+                ", null as [PorYYYYWW]",
+                ", null as [TrendYYYYWW]",
+                ", [RequestingProducts]",
+                ", null as [UsingProducts]",
+                ", [DevOrg]",
+                ", null as [Revision]",
+                "from [V_IPG_Carbon_Milestone] carbon",
+                "join (select distinct  ipconfigurationid from [V_IPG_CARBON_IPCONFIGURATION] where 1=1",
+                "and IsRequestable  = 'yes') ipg ",
+                "ON carbon.ipconfigurationid   = ipg.ipconfigurationid ",
+                "where 1=1 and ([DevOrg] = 'IPG' or [DevSubOrg] = 'DTEG')",
+                "",
+                "union",
+                "",
+                "select distinct [ID], Complete, [IDTypeUsed], [Configuration], [IPSupplier], [SubOrg], Domain, [Drop],[DropType],[Generation], ",
+                "[IPFamily], [IpType], [IPXFQN], [Process], TRM.[PorYYYYWW], TRM.[TrendYYYYWW], [RequestingProducts], product.[product] as [UsingProducts], [DevOrg], [Revision]",
+                "from (",
+                "select distinct [MilestoneId] as [ID]",
+                ", [Complete]",
+                ", 'TRM' as [IDTypeUsed]",
+                ", TRMmiles.[Configuration]",
+                ", [DevGroup] as IPSupplier",
+                ", [DevSubOrg] as SubOrg",
+                ", [Domain]",
+                ", [Drop]",
+                ", [DropType]",
+                ", [Generation]",
+                ", [IPFamily]",
+                ", [IpType]",
+                ", [IPXFQN]",
+                ", [Process]",
+                ", [PorYYYYWW]",
+                ", [TrendYYYYWW]",
+                ", [RequestingProducts]",
+                ", [UsingProducts]",
+                ", [DevOrg]",
+                ", [Revision]",
+                "from [V_IPG_Carbon_Milestone] TRMmiles",
+                "join (select distinct  ipconfigurationid from [V_IPG_CARBON_IPCONFIGURATION] where 1=1",
+                "and IsRequestable  = 'yes') TRMipg ",
+                "ON TRMmiles.ipconfigurationid   = TRMipg.ipconfigurationid ",
+                "where 1=1 and ([DevOrg] = 'ipg' or [DevSubOrg] = 'DTEG')  ",
+                "and [Drop] = 'IP Architecture Complete (IAC)') TRM  -- 394 rows ",
+                "left join cig_product_ti_cached product",
+                "ON ',' + TRM.[UsingProducts] + ',' LIKE '%' + product.[product] + ',%'--) TRMProduct",
+                "",
+                ") combined"
+              ],
+              "dataSource": "IBI"
+            },
+            "annotations": [
+              {
+                "name": "QueryEditorSerialization",
+                "value": [
+                  "<?xml version=\"1.0\" encoding=\"UTF-16\"?><Gemini xmlns=\"QueryEditorSerialization\"><AnnotationContent><![CDATA[<RSQueryCommandText>select *, ",
+                  "case ",
+                  "\twhen [IDTypeUsed] = 'configuration' then 'DataSheet' ",
+                  "\twhen [Drop] like 'UV%' then 'integrationGuide'  ",
+                  "\twhen [Drop] = 'IP Execution Commit (IE)' then 'IE-Commit' ",
+                  "\twhen [Drop] = 'eFV' then 'integrationGuide'  ",
+                  "\twhen [Drop] = 'FV' then 'integrationGuide' ",
+                  "\twhen ([IDTypeUsed] = 'TRM' and [Drop] = 'IP Architecture Complete (IAC)') then 'TRM' ",
+                  "\twhen [Drop] = 'IP Concept (IC)' then 'IP-Concept' ",
+                  "\twhen [Drop] = 'IP Concept Refresh (ICR)' then 'IC-Refresh' ",
+                  "\telse Null ",
+                  "end as [DocType], ",
+                  "case ",
+                  "\twhen ([configuration] in (select distinct configuration from v_ipg_carbon_milestone ",
+                  "\t\t\t\twhere [drop] = 'IP Execution Commit (IE)') and (([IDTypeUsed] = 'milestone' and [Drop] <>'IP Architecture Complete (IAC)')",
+                  "\t\t\t\tor ([IDTypeUsed] = 'TRM' and [Drop] ='IP Architecture Complete (IAC)') or ([IDTypeUsed] = 'configuration')))",
+                  "",
+                  "",
+                  "",
+                  "then 'post-gladius'",
+                  "\telse 'pre-gladius' ",
+                  "end as [Gladius]",
+                  "from ",
+                  "",
+                  "-- this is where the UNION data starts ",
+                  "(select distinct [MilestoneId] as [ID]",
+                  ", [Complete]",
+                  ", 'milestone' as [IDTypeUsed]",
+                  ", carbon.[Configuration]",
+                  ", [DevGroup] as IPSupplier",
+                  ", [DevSubOrg] as SubOrg",
+                  ", [Domain]",
+                  ", [Drop]",
+                  ", [DropType]",
+                  ", [Generation]",
+                  ", [IPFamily]",
+                  ", [IpType]",
+                  ", [IPXFQN]",
+                  ", [Process]",
+                  ", [PorYYYYWW]",
+                  ", [TrendYYYYWW]",
+                  ", [RequestingProducts]",
+                  ", [UsingProducts]",
+                  ", [DevOrg]",
+                  ", [Revision]",
+                  "from [V_IPG_Carbon_Milestone] carbon",
+                  "join (select distinct  ipconfigurationid from [V_IPG_CARBON_IPCONFIGURATION] where 1=1",
+                  "and IsRequestable  = 'yes') ipg ",
+                  "ON carbon.ipconfigurationid   = ipg.ipconfigurationid ",
+                  "where 1=1 and ([DevOrg] = 'ipg' or [DevSubOrg] = 'DTEG') and [Drop] <> 'IP Architecture Complete (IAC)'",
+                  "",
+                  "union ",
+                  "select distinct carbon.[IPConfigurationId] as [ID] ",
+                  ", null as [Complete] ",
+                  ", 'configuration' as [IDTypeUsed]",
+                  ", [Configuration]",
+                  ", [DevGroup] as IPSupplier",
+                  ", [DevSubOrg] as SubOrg",
+                  ", [Domain]",
+                  ", null as [Drop]",
+                  ", null as [DropType] ",
+                  ", [Generation]",
+                  ", [IPFamily]",
+                  ", [IpType]",
+                  ", null as [IPXFQN]",
+                  ", null as [Process]",
+                  ", null as [PorYYYYWW]",
+                  ", null as [TrendYYYYWW]",
+                  ", [RequestingProducts]",
+                  ", null as [UsingProducts]",
+                  ", [DevOrg]",
+                  ", null as [Revision]",
+                  "from [V_IPG_Carbon_Milestone] carbon",
+                  "join (select distinct  ipconfigurationid from [V_IPG_CARBON_IPCONFIGURATION] where 1=1",
+                  "and IsRequestable  = 'yes') ipg ",
+                  "ON carbon.ipconfigurationid   = ipg.ipconfigurationid ",
+                  "where 1=1 and ([DevOrg] = 'IPG' or [DevSubOrg] = 'DTEG')",
+                  "",
+                  "union",
+                  "",
+                  "select distinct [ID], Complete, [IDTypeUsed], [Configuration], [IPSupplier], [SubOrg], Domain, [Drop],[DropType],[Generation], ",
+                  "[IPFamily], [IpType], [IPXFQN], [Process], TRM.[PorYYYYWW], TRM.[TrendYYYYWW], [RequestingProducts], product.[product] as [UsingProducts], [DevOrg], [Revision]",
+                  "from (",
+                  "select distinct [MilestoneId] as [ID]",
+                  ", [Complete]",
+                  ", 'TRM' as [IDTypeUsed]",
+                  ", TRMmiles.[Configuration]",
+                  ", [DevGroup] as IPSupplier",
+                  ", [DevSubOrg] as SubOrg",
+                  ", [Domain]",
+                  ", [Drop]",
+                  ", [DropType]",
+                  ", [Generation]",
+                  ", [IPFamily]",
+                  ", [IpType]",
+                  ", [IPXFQN]",
+                  ", [Process]",
+                  ", [PorYYYYWW]",
+                  ", [TrendYYYYWW]",
+                  ", [RequestingProducts]",
+                  ", [UsingProducts]",
+                  ", [DevOrg]",
+                  ", [Revision]",
+                  "from [V_IPG_Carbon_Milestone] TRMmiles",
+                  "join (select distinct  ipconfigurationid from [V_IPG_CARBON_IPCONFIGURATION] where 1=1",
+                  "and IsRequestable  = 'yes') TRMipg ",
+                  "ON TRMmiles.ipconfigurationid   = TRMipg.ipconfigurationid ",
+                  "where 1=1 and ([DevOrg] = 'ipg' or [DevSubOrg] = 'DTEG')  ",
+                  "and [Drop] = 'IP Architecture Complete (IAC)') TRM  -- 394 rows ",
+                  "left join cig_product_ti_cached product",
+                  "ON ',' + TRM.[UsingProducts] + ',' LIKE '%' + product.[product] + ',%'--) TRMProduct",
+                  "",
+                  ") combined</RSQueryCommandText><RSQueryCommandType>Text</RSQueryCommandType><RSQueryDesignState></RSQueryDesignState>]]></AnnotationContent></Gemini>"
+                ]
+              }
+            ]
+          }
+        ],
+        "measures": [
+          {
+            "name": "MaxSoC",
+            "expression": " MAX(CarbonCombined[LengthSoC])"
+          },
+          {
+            "name": "MaxUsingProducts",
+            "expression": " MAX(CarbonCombined[LengthUsingProducts])"
+          },
+          {
+            "name": "PostGladius",
+            "expression": " CALCULATE(COUNTROWS(CarbonCombined), CarbonCombined[Gladius] = \"post-gladius\")"
+          },
+          {
+            "name": "Scorecard",
+            "expression": " CALCULATE(COUNTROWS(FILTER(CarbonCombined, NOT(ISBLANK([DocType])) && [Gladius] = \"post-gladius\")))"
+          },
+          {
+            "name": "DistinctID",
+            "expression": " DISTINCTCOUNT(CarbonCombined[ID])"
+          }
+        ],
+        "annotations": [
+          {
+            "name": "_TM_ExtProp_QueryDefinition",
+            "value": [
+              "select *, ",
+              "case ",
+              "\twhen [IDTypeUsed] = 'configuration' then 'DataSheet' ",
+              "\twhen [Drop] like 'UV%' then 'integrationGuide'  ",
+              "\twhen [Drop] = 'IP Execution Commit (IE)' then 'IE-Commit' ",
+              "\twhen [Drop] = 'eFV' then 'integrationGuide'  ",
+              "\twhen [Drop] = 'FV' then 'integrationGuide' ",
+              "\twhen ([IDTypeUsed] = 'TRM' and [Drop] = 'IP Architecture Complete (IAC)') then 'TRM' ",
+              "\twhen [Drop] = 'IP Concept (IC)' then 'IP-Concept' ",
+              "\twhen [Drop] = 'IP Concept Refresh (ICR)' then 'IC-Refresh' ",
+              "\telse Null ",
+              "end as [DocType], ",
+              "case ",
+              "\twhen ([configuration] in (select distinct configuration from v_ipg_carbon_milestone ",
+              "\t\t\t\twhere [drop] = 'IP Execution Commit (IE)') and (([IDTypeUsed] = 'milestone' and [Drop] <>'IP Architecture Complete (IAC)')",
+              "\t\t\t\tor ([IDTypeUsed] = 'TRM' and [Drop] ='IP Architecture Complete (IAC)') or ([IDTypeUsed] = 'configuration')))",
+              "",
+              "",
+              "",
+              "then 'post-gladius'",
+              "\telse 'pre-gladius' ",
+              "end as [Gladius]",
+              "from ",
+              "",
+              "-- this is where the UNION data starts ",
+              "(select distinct [MilestoneId] as [ID]",
+              ", [Complete]",
+              ", 'milestone' as [IDTypeUsed]",
+              ", carbon.[Configuration]",
+              ", [DevGroup] as IPSupplier",
+              ", [DevSubOrg] as SubOrg",
+              ", [Domain]",
+              ", [Drop]",
+              ", [DropType]",
+              ", [Generation]",
+              ", [IPFamily]",
+              ", [IpType]",
+              ", [IPXFQN]",
+              ", [Process]",
+              ", [PorYYYYWW]",
+              ", [TrendYYYYWW]",
+              ", [RequestingProducts]",
+              ", [UsingProducts]",
+              ", [DevOrg]",
+              ", [Revision]",
+              "from [V_IPG_Carbon_Milestone] carbon",
+              "join (select distinct  ipconfigurationid from [V_IPG_CARBON_IPCONFIGURATION] where 1=1",
+              "and IsRequestable  = 'yes') ipg ",
+              "ON carbon.ipconfigurationid   = ipg.ipconfigurationid ",
+              "where 1=1 and ([DevOrg] = 'ipg' or [DevSubOrg] = 'DTEG') and [Drop] <> 'IP Architecture Complete (IAC)'",
+              "",
+              "union ",
+              "select distinct carbon.[IPConfigurationId] as [ID] ",
+              ", null as [Complete] ",
+              ", 'configuration' as [IDTypeUsed]",
+              ", [Configuration]",
+              ", [DevGroup] as IPSupplier",
+              ", [DevSubOrg] as SubOrg",
+              ", [Domain]",
+              ", null as [Drop]",
+              ", null as [DropType] ",
+              ", [Generation]",
+              ", [IPFamily]",
+              ", [IpType]",
+              ", null as [IPXFQN]",
+              ", null as [Process]",
+              ", null as [PorYYYYWW]",
+              ", null as [TrendYYYYWW]",
+              ", [RequestingProducts]",
+              ", null as [UsingProducts]",
+              ", [DevOrg]",
+              ", null as [Revision]",
+              "from [V_IPG_Carbon_Milestone] carbon",
+              "join (select distinct  ipconfigurationid from [V_IPG_CARBON_IPCONFIGURATION] where 1=1",
+              "and IsRequestable  = 'yes') ipg ",
+              "ON carbon.ipconfigurationid   = ipg.ipconfigurationid ",
+              "where 1=1 and ([DevOrg] = 'IPG' or [DevSubOrg] = 'DTEG')",
+              "",
+              "union",
+              "",
+              "select distinct [ID], Complete, [IDTypeUsed], [Configuration], [IPSupplier], [SubOrg], Domain, [Drop],[DropType],[Generation], ",
+              "[IPFamily], [IpType], [IPXFQN], [Process], TRM.[PorYYYYWW], TRM.[TrendYYYYWW], [RequestingProducts], product.[product] as [UsingProducts], [DevOrg], [Revision]",
+              "from (",
+              "select distinct [MilestoneId] as [ID]",
+              ", [Complete]",
+              ", 'TRM' as [IDTypeUsed]",
+              ", TRMmiles.[Configuration]",
+              ", [DevGroup] as IPSupplier",
+              ", [DevSubOrg] as SubOrg",
+              ", [Domain]",
+              ", [Drop]",
+              ", [DropType]",
+              ", [Generation]",
+              ", [IPFamily]",
+              ", [IpType]",
+              ", [IPXFQN]",
+              ", [Process]",
+              ", [PorYYYYWW]",
+              ", [TrendYYYYWW]",
+              ", [RequestingProducts]",
+              ", [UsingProducts]",
+              ", [DevOrg]",
+              ", [Revision]",
+              "from [V_IPG_Carbon_Milestone] TRMmiles",
+              "join (select distinct  ipconfigurationid from [V_IPG_CARBON_IPCONFIGURATION] where 1=1",
+              "and IsRequestable  = 'yes') TRMipg ",
+              "ON TRMmiles.ipconfigurationid   = TRMipg.ipconfigurationid ",
+              "where 1=1 and ([DevOrg] = 'ipg' or [DevSubOrg] = 'DTEG')  ",
+              "and [Drop] = 'IP Architecture Complete (IAC)') TRM  -- 394 rows ",
+              "left join cig_product_ti_cached product",
+              "ON ',' + TRM.[UsingProducts] + ',' LIKE '%' + product.[product] + ',%'--) TRMProduct",
+              "",
+              ") combined"
+            ]
+          },
+          {
+            "name": "_TM_ExtProp_DbTableName",
+            "value": "QueryCombined"
+          },
+          {
+            "name": "QueryEditorSerialization",
+            "value": [
+              "<?xml version=\"1.0\" encoding=\"UTF-16\"?><Gemini xmlns=\"QueryEditorSerialization\"><AnnotationContent><![CDATA[<RSQueryCommandText>select *, ",
+              "case ",
+              "\twhen [IDTypeUsed] = 'configuration' then 'DataSheet' ",
+              "\twhen [Drop] like 'UV%' then 'integrationGuide'  ",
+              "\twhen [Drop] = 'IP Execution Commit (IE)' then 'IE-Commit' ",
+              "\twhen [Drop] = 'eFV' then 'integrationGuide'  ",
+              "\twhen [Drop] = 'FV' then 'integrationGuide' ",
+              "\twhen ([IDTypeUsed] = 'TRM' and [Drop] = 'IP Architecture Complete (IAC)') then 'TRM' ",
+              "\twhen [Drop] = 'IP Concept (IC)' then 'IP-Concept' ",
+              "\twhen [Drop] = 'IP Concept Refresh (ICR)' then 'IC-Refresh' ",
+              "\telse Null ",
+              "end as [DocType], ",
+              "case ",
+              "\twhen ([configuration] in (select distinct configuration from v_ipg_carbon_milestone ",
+              "\t\t\t\twhere [drop] = 'IP Execution Commit (IE)') and (([IDTypeUsed] = 'milestone' and [Drop] <>'IP Architecture Complete (IAC)')",
+              "\t\t\t\tor ([IDTypeUsed] = 'TRM' and [Drop] ='IP Architecture Complete (IAC)') or ([IDTypeUsed] = 'configuration')))",
+              "",
+              "",
+              "",
+              "then 'post-gladius'",
+              "\telse 'pre-gladius' ",
+              "end as [Gladius]",
+              "from ",
+              "",
+              "-- this is where the UNION data starts ",
+              "(select distinct [MilestoneId] as [ID]",
+              ", [Complete]",
+              ", 'milestone' as [IDTypeUsed]",
+              ", carbon.[Configuration]",
+              ", [DevGroup] as IPSupplier",
+              ", [DevSubOrg] as SubOrg",
+              ", [Domain]",
+              ", [Drop]",
+              ", [DropType]",
+              ", [Generation]",
+              ", [IPFamily]",
+              ", [IpType]",
+              ", [IPXFQN]",
+              ", [Process]",
+              ", [PorYYYYWW]",
+              ", [TrendYYYYWW]",
+              ", [RequestingProducts]",
+              ", [UsingProducts]",
+              ", [DevOrg]",
+              ", [Revision]",
+              "from [V_IPG_Carbon_Milestone] carbon",
+              "join (select distinct  ipconfigurationid from [V_IPG_CARBON_IPCONFIGURATION] where 1=1",
+              "and IsRequestable  = 'yes') ipg ",
+              "ON carbon.ipconfigurationid   = ipg.ipconfigurationid ",
+              "where 1=1 and ([DevOrg] = 'ipg' or [DevSubOrg] = 'DTEG') and [Drop] <> 'IP Architecture Complete (IAC)'",
+              "",
+              "union ",
+              "select distinct carbon.[IPConfigurationId] as [ID] ",
+              ", null as [Complete] ",
+              ", 'configuration' as [IDTypeUsed]",
+              ", [Configuration]",
+              ", [DevGroup] as IPSupplier",
+              ", [DevSubOrg] as SubOrg",
+              ", [Domain]",
+              ", null as [Drop]",
+              ", null as [DropType] ",
+              ", [Generation]",
+              ", [IPFamily]",
+              ", [IpType]",
+              ", null as [IPXFQN]",
+              ", null as [Process]",
+              ", null as [PorYYYYWW]",
+              ", null as [TrendYYYYWW]",
+              ", [RequestingProducts]",
+              ", null as [UsingProducts]",
+              ", [DevOrg]",
+              ", null as [Revision]",
+              "from [V_IPG_Carbon_Milestone] carbon",
+              "join (select distinct  ipconfigurationid from [V_IPG_CARBON_IPCONFIGURATION] where 1=1",
+              "and IsRequestable  = 'yes') ipg ",
+              "ON carbon.ipconfigurationid   = ipg.ipconfigurationid ",
+              "where 1=1 and ([DevOrg] = 'IPG' or [DevSubOrg] = 'DTEG')",
+              "",
+              "union",
+              "",
+              "select distinct [ID], Complete, [IDTypeUsed], [Configuration], [IPSupplier], [SubOrg], Domain, [Drop],[DropType],[Generation], ",
+              "[IPFamily], [IpType], [IPXFQN], [Process], TRM.[PorYYYYWW], TRM.[TrendYYYYWW], [RequestingProducts], product.[product] as [UsingProducts], [DevOrg], [Revision]",
+              "from (",
+              "select distinct [MilestoneId] as [ID]",
+              ", [Complete]",
+              ", 'TRM' as [IDTypeUsed]",
+              ", TRMmiles.[Configuration]",
+              ", [DevGroup] as IPSupplier",
+              ", [DevSubOrg] as SubOrg",
+              ", [Domain]",
+              ", [Drop]",
+              ", [DropType]",
+              ", [Generation]",
+              ", [IPFamily]",
+              ", [IpType]",
+              ", [IPXFQN]",
+              ", [Process]",
+              ", [PorYYYYWW]",
+              ", [TrendYYYYWW]",
+              ", [RequestingProducts]",
+              ", [UsingProducts]",
+              ", [DevOrg]",
+              ", [Revision]",
+              "from [V_IPG_Carbon_Milestone] TRMmiles",
+              "join (select distinct  ipconfigurationid from [V_IPG_CARBON_IPCONFIGURATION] where 1=1",
+              "and IsRequestable  = 'yes') TRMipg ",
+              "ON TRMmiles.ipconfigurationid   = TRMipg.ipconfigurationid ",
+              "where 1=1 and ([DevOrg] = 'ipg' or [DevSubOrg] = 'DTEG')  ",
+              "and [Drop] = 'IP Architecture Complete (IAC)') TRM  -- 394 rows ",
+              "left join cig_product_ti_cached product",
+              "ON ',' + TRM.[UsingProducts] + ',' LIKE '%' + product.[product] + ',%'--) TRMProduct",
+              "",
+              ") combined</RSQueryCommandText><RSQueryCommandType>Text</RSQueryCommandType><RSQueryDesignState></RSQueryDesignState>]]></AnnotationContent></Gemini>"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "QueryLastProcessed",
+        "columns": [
+          {
+            "name": "lastprocesseddate",
+            "dataType": "dateTime",
+            "sourceColumn": "lastprocesseddate",
+            "formatString": "General Date",
+            "sourceProviderType": "Date"
+          }
+        ],
+        "partitions": [
+          {
+            "name": "QueryLastProcessed",
+            "dataView": "full",
+            "source": {
+              "type": "query",
+              "query": [
+                "select distinct",
+                "max(updatedate) as lastprocesseddate",
+                "from [v_ipg_carbon_milestone]"
+              ],
+              "dataSource": "IBI"
+            },
+            "annotations": [
+              {
+                "name": "QueryEditorSerialization",
+                "value": [
+                  "<?xml version=\"1.0\" encoding=\"UTF-16\"?><Gemini xmlns=\"QueryEditorSerialization\"><AnnotationContent><![CDATA[<RSQueryCommandText>select distinct",
+                  "max(updatedate) as lastprocesseddate",
+                  "from [v_ipg_carbon_milestone]</RSQueryCommandText><RSQueryCommandType>Text</RSQueryCommandType><RSQueryDesignState></RSQueryDesignState>]]></AnnotationContent></Gemini>"
+                ]
+              }
+            ]
+          }
+        ],
+        "annotations": [
+          {
+            "name": "_TM_ExtProp_QueryDefinition",
+            "value": [
+              "select distinct",
+              "max(updatedate) as lastprocesseddate",
+              "from [v_ipg_carbon_milestone]"
+            ]
+          },
+          {
+            "name": "_TM_ExtProp_DbTableName",
+            "value": "QueryLastProcessed"
+          },
+          {
+            "name": "QueryEditorSerialization",
+            "value": [
+              "<?xml version=\"1.0\" encoding=\"UTF-16\"?><Gemini xmlns=\"QueryEditorSerialization\"><AnnotationContent><![CDATA[<RSQueryCommandText>select distinct",
+              "max(updatedate) as lastprocesseddate",
+              "from [v_ipg_carbon_milestone]</RSQueryCommandText><RSQueryCommandType>Text</RSQueryCommandType><RSQueryDesignState></RSQueryDesignState>]]></AnnotationContent></Gemini>"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "SoCQuery",
+        "columns": [
+          {
+            "type": "calculatedTableColumn",
+            "name": "SubSoC",
+            "dataType": "string",
+            "isNameInferred": true,
+            "isDataTypeInferred": true,
+            "sourceColumn": "[SubSoC]"
+          },
+          {
+            "type": "calculatedTableColumn",
+            "name": "RequestingProducts",
+            "dataType": "string",
+            "isNameInferred": true,
+            "isDataTypeInferred": true,
+            "sourceColumn": "CarbonCombined[RequestingProducts]"
+          },
+          {
+            "type": "calculatedTableColumn",
+            "name": "SubCount",
+            "dataType": "int64",
+            "isNameInferred": true,
+            "isDataTypeInferred": true,
+            "sourceColumn": "[SubCount]"
+          },
+          {
+            "type": "calculatedTableColumn",
+            "name": "Value",
+            "dataType": "int64",
+            "isNameInferred": true,
+            "isDataTypeInferred": true,
+            "sourceColumn": "[Value]"
+          }
+        ],
+        "partitions": [
+          {
+            "name": "CalculatedTable 1",
+            "source": {
+              "type": "calculated",
+              "expression": [
+                "  ADDCOLUMNS (FILTER(CROSSJOIN(SUMMARIZE(CarbonCombined, [RequestingProducts], \"SubCount\", 1 + LEN([RequestingProducts]) - LEN(SUBSTITUTE([RequestingProducts], \",\",\"\"))), ",
+                "GENERATESERIES(1, [MaxSoC], 1)), [Value]<= [SubCount]), \"SubSoC\", PATHITEM(SUBSTITUTE(CarbonCombined[RequestingProducts], \",\", \"|\"), [Value]))"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "QueryReleaseNotes",
+        "columns": [
+          {
+            "name": "IPXFQN",
+            "dataType": "string",
+            "sourceColumn": "IPXFQN",
+            "sourceProviderType": "VarChar"
+          },
+          {
+            "name": "ID",
+            "dataType": "int64",
+            "sourceColumn": "ID"
+          },
+          {
+            "type": "calculated",
+            "name": "URL",
+            "dataType": "string",
+            "isDataTypeInferred": true,
+            "expression": " CONCATENATE(\"https://ipxprod2.intel.com/#/ipv/\", CONCATENATE(QueryReleaseNotes[IPXFQN], \"/dashboard\"))",
+            "dataCategory": "WebUrl"
+          },
+          {
+            "type": "calculated",
+            "name": "doc_type",
+            "dataType": "string",
+            "isDataTypeInferred": true,
+            "expression": " \"ReleaseNote\""
+          },
+          {
+            "type": "calculated",
+            "name": "doc_value",
+            "dataType": "string",
+            "isDataTypeInferred": true,
+            "expression": " \"milestone\""
+          },
+          {
+            "type": "calculated",
+            "name": "visible",
+            "dataType": "int64",
+            "isDataTypeInferred": true,
+            "expression": " 1"
+          },
+          {
+            "type": "calculated",
+            "name": "f_active",
+            "dataType": "int64",
+            "isDataTypeInferred": true,
+            "expression": " 1"
+          },
+          {
+            "type": "calculated",
+            "name": "code",
+            "dataType": "int64",
+            "isDataTypeInferred": true,
+            "expression": " 222"
+          },
+          {
+            "name": "DevOrg",
+            "dataType": "string",
+            "sourceColumn": "DevOrg"
+          },
+          {
+            "name": "DevSubOrg",
+            "dataType": "string",
+            "sourceColumn": "DevSubOrg"
+          },
+          {
+            "name": "TrendYYYYWW",
+            "dataType": "int64",
+            "sourceColumn": "TrendYYYYWW"
+          }
+        ],
+        "partitions": [
+          {
+            "name": "QueryReleaseNotes",
+            "dataView": "full",
+            "source": {
+              "type": "query",
+              "query": [
+                "select distinct",
+                "[MilestoneId] as [ID]",
+                ",[IPXFQN], [DevOrg], [DevSubOrg], [TrendYYYYWW] ",
+                "from[V_IPG_CARBON_MILESTONE] carbon ",
+                "join (select distinct  ipconfigurationid from [V_IPG_CARBON_IPCONFIGURATION] where 1=1",
+                "and IsRequestable  = 'yes') ipg",
+                "  ON carbon.ipconfigurationid   = ipg.ipconfigurationid",
+                "where 1=1 and ([DevOrg] = 'ipg' or [DevSubOrg] = 'DTEG') and [IPXFQN] <> null and [IPXFQN] <> ''"
+              ],
+              "dataSource": "IBI"
+            },
+            "annotations": [
+              {
+                "name": "QueryEditorSerialization",
+                "value": [
+                  "<?xml version=\"1.0\" encoding=\"UTF-16\"?><Gemini xmlns=\"QueryEditorSerialization\"><AnnotationContent><![CDATA[<RSQueryCommandText>select distinct",
+                  "[MilestoneId] as [ID]",
+                  ",[IPXFQN], [DevOrg], [DevSubOrg], [TrendYYYYWW] ",
+                  "from[V_IPG_CARBON_MILESTONE] carbon ",
+                  "join (select distinct  ipconfigurationid from [V_IPG_CARBON_IPCONFIGURATION] where 1=1",
+                  "and IsRequestable  = 'yes') ipg",
+                  "  ON carbon.ipconfigurationid   = ipg.ipconfigurationid",
+                  "where 1=1 and ([DevOrg] = 'ipg' or [DevSubOrg] = 'DTEG') and [IPXFQN] <> null and [IPXFQN] <> ''</RSQueryCommandText><RSQueryCommandType>Text</RSQueryCommandType><RSQueryDesignState></RSQueryDesignState>]]></AnnotationContent></Gemini>"
+                ]
+              }
+            ]
+          }
+        ],
+        "annotations": [
+          {
+            "name": "_TM_ExtProp_QueryDefinition",
+            "value": [
+              "select distinct",
+              "[MilestoneId] as [ID]",
+              ",[IPXFQN], [DevOrg], [DevSubOrg], [TrendYYYYWW] ",
+              "from[V_IPG_CARBON_MILESTONE] carbon ",
+              "join (select distinct  ipconfigurationid from [V_IPG_CARBON_IPCONFIGURATION] where 1=1",
+              "and IsRequestable  = 'yes') ipg",
+              "  ON carbon.ipconfigurationid   = ipg.ipconfigurationid",
+              "where 1=1 and ([DevOrg] = 'ipg' or [DevSubOrg] = 'DTEG') and [IPXFQN] <> null and [IPXFQN] <> ''"
+            ]
+          },
+          {
+            "name": "_TM_ExtProp_DbTableName",
+            "value": "QueryReleaseNotes"
+          },
+          {
+            "name": "QueryEditorSerialization",
+            "value": [
+              "<?xml version=\"1.0\" encoding=\"UTF-16\"?><Gemini xmlns=\"QueryEditorSerialization\"><AnnotationContent><![CDATA[<RSQueryCommandText>select distinct",
+              "[MilestoneId] as [ID]",
+              ",[IPXFQN], [DevOrg], [DevSubOrg], [TrendYYYYWW] ",
+              "from[V_IPG_CARBON_MILESTONE] carbon ",
+              "join (select distinct  ipconfigurationid from [V_IPG_CARBON_IPCONFIGURATION] where 1=1",
+              "and IsRequestable  = 'yes') ipg",
+              "  ON carbon.ipconfigurationid   = ipg.ipconfigurationid",
+              "where 1=1 and ([DevOrg] = 'ipg' or [DevSubOrg] = 'DTEG') and [IPXFQN] <> null and [IPXFQN] <> ''</RSQueryCommandText><RSQueryCommandType>Text</RSQueryCommandType><RSQueryDesignState></RSQueryDesignState>]]></AnnotationContent></Gemini>"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "QueryUnion",
+        "columns": [
+          {
+            "type": "calculatedTableColumn",
+            "name": "ID",
+            "dataType": "int64",
+            "isNameInferred": true,
+            "isDataTypeInferred": true,
+            "sourceColumn": "[ID]"
+          },
+          {
+            "type": "calculatedTableColumn",
+            "name": "doc_type",
+            "dataType": "string",
+            "isNameInferred": true,
+            "isDataTypeInferred": true,
+            "sourceColumn": "[doc_type]"
+          },
+          {
+            "type": "calculatedTableColumn",
+            "name": "url",
+            "dataType": "string",
+            "isNameInferred": true,
+            "isDataTypeInferred": true,
+            "sourceColumn": "[url]",
+            "dataCategory": "WebUrl"
+          },
+          {
+            "type": "calculatedTableColumn",
+            "name": "visible",
+            "dataType": "int64",
+            "isNameInferred": true,
+            "isDataTypeInferred": true,
+            "sourceColumn": "[visible]",
+            "formatString": "0"
+          },
+          {
+            "type": "calculatedTableColumn",
+            "name": "active",
+            "dataType": "int64",
+            "isNameInferred": true,
+            "isDataTypeInferred": true,
+            "sourceColumn": "[active]",
+            "formatString": "0"
+          },
+          {
+            "type": "calculatedTableColumn",
+            "name": "code",
+            "dataType": "string",
+            "isNameInferred": true,
+            "isDataTypeInferred": true,
+            "sourceColumn": "[code]"
+          },
+          {
+            "type": "calculated",
+            "name": "UniqueKey",
+            "dataType": "string",
+            "isDataTypeInferred": true,
+            "expression": " [iD] & \"_\" & [doc_type]"
+          },
+          {
+            "type": "calculated",
+            "name": "Occurances",
+            "dataType": "int64",
+            "isDataTypeInferred": true,
+            "expression": [
+              " ",
+              "Var numID = [UniqueKey]",
+              "RETURN",
+              "",
+              "CALCULATE(",
+              "    COUNTROWS(QueryUnion),",
+              "    all(QueryUnion),",
+              "    QueryUnion[UniqueKey] = numID",
+              ")"
+            ]
+          }
+        ],
+        "partitions": [
+          {
+            "name": "CalculatedTable 1",
+            "source": {
+              "type": "calculated",
+              "expression": [
+                " UNION(",
+                "SELECTCOLUMNS(QueryDocTracking, \"ID\", QueryDocTracking[intel_id_int], \"doc_type\", QueryDocTracking[f_doc], \"url\", QueryDocTracking[f_url], \"visible\", QueryDocTracking[visible], \"active\", QueryDocTracking[active_int], \"code\", QueryDocTracking[code]), ",
+                "SELECTCOLUMNS(QueryReleaseNotes, \"ID\", QueryReleaseNotes[ID], \"doc_type\", QueryReleaseNotes[doc_type], \"url\", QueryReleaseNotes[URL], \"visible\", QueryReleaseNotes[visible], \"active\", QueryReleaseNotes[f_active], \"code\", QueryReleaseNotes[code]))",
+                ""
+              ]
+            }
+          }
+        ],
+        "measures": [
+          {
+            "name": "CountActiveVisible",
+            "expression": " CALCULATE(COUNT(QueryUnion[ID]), QueryUnion[active] = 1, QueryUnion[visible] = 1)"
+          }
+        ]
+      },
+      {
+        "name": "UsingProductsQuery",
+        "columns": [
+          {
+            "type": "calculatedTableColumn",
+            "name": "UsingProducts",
+            "dataType": "string",
+            "isNameInferred": true,
+            "isDataTypeInferred": true,
+            "sourceColumn": "CarbonCombined[UsingProducts]"
+          },
+          {
+            "type": "calculatedTableColumn",
+            "name": "Value",
+            "dataType": "int64",
+            "isNameInferred": true,
+            "isDataTypeInferred": true,
+            "sourceColumn": "[Value]"
+          },
+          {
+            "type": "calculatedTableColumn",
+            "name": "SubUsingProducts",
+            "dataType": "string",
+            "isNameInferred": true,
+            "isDataTypeInferred": true,
+            "sourceColumn": "[SubUsingProducts]"
+          },
+          {
+            "type": "calculatedTableColumn",
+            "name": "Count",
+            "dataType": "int64",
+            "isNameInferred": true,
+            "isDataTypeInferred": true,
+            "sourceColumn": "[Count]"
+          }
+        ],
+        "partitions": [
+          {
+            "name": "CalculatedTable 1",
+            "source": {
+              "type": "calculated",
+              "expression": [
+                " ADDCOLUMNS (FILTER(CROSSJOIN(SUMMARIZE(CarbonCombined, [UsingProducts], \"Count\", 1 + LEN([UsingProducts]) - LEN(SUBSTITUTE([UsingProducts], \",\",\"\"))), ",
+                "GENERATESERIES(1, [MaxUsingProducts], 1)), [Value]<= [Count]),\"SubUsingProducts\", PATHITEM(SUBSTITUTE(CarbonCombined[UsingProducts], \", \", \"|\"), [Value]))"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "CarbonBridge",
+        "columns": [
+          {
+            "name": "ID",
+            "dataType": "int64",
+            "sourceColumn": "ID",
+            "sourceProviderType": "BigInt"
+          },
+          {
+            "name": "IDTypeUsed",
+            "dataType": "string",
+            "sourceColumn": "IDTypeUsed",
+            "sourceProviderType": "VarChar"
+          }
+        ],
+        "partitions": [
+          {
+            "name": "CarbonBridge",
+            "dataView": "full",
+            "source": {
+              "type": "query",
+              "query": [
+                "select distinct [MilestoneId] as [ID]",
+                ", 'milestone' as [IDTypeUsed]",
+                "from [V_IPG_Carbon_Milestone] carbon",
+                "join (select distinct  ipconfigurationid from [V_IPG_CARBON_IPCONFIGURATION] where 1=1",
+                "and IsRequestable  = 'yes') ipg ",
+                "ON carbon.ipconfigurationid   = ipg.ipconfigurationid ",
+                "where 1=1 and ([DevOrg] = 'ipg' or [DevSubOrg] = 'DTEG') ",
+                "union ",
+                "select distinct carbon.[IPConfigurationId] as [ID] ",
+                ", 'configuration' as [IDTypeUsed]",
+                "from [V_IPG_Carbon_Milestone] carbon",
+                "join (select distinct  ipconfigurationid from [V_IPG_CARBON_IPCONFIGURATION] where 1=1",
+                "and IsRequestable  = 'yes') ipg ",
+                "ON carbon.ipconfigurationid   = ipg.ipconfigurationid ",
+                "where 1=1 and ([DevOrg] = 'IPG' or [DevSubOrg] = 'DTEG')"
+              ],
+              "dataSource": "IBI"
+            },
+            "annotations": [
+              {
+                "name": "QueryEditorSerialization",
+                "value": [
+                  "<?xml version=\"1.0\" encoding=\"UTF-16\"?><Gemini xmlns=\"QueryEditorSerialization\"><AnnotationContent><![CDATA[<RSQueryCommandText>select distinct [MilestoneId] as [ID]",
+                  ", 'milestone' as [IDTypeUsed]",
+                  "from [V_IPG_Carbon_Milestone] carbon",
+                  "join (select distinct  ipconfigurationid from [V_IPG_CARBON_IPCONFIGURATION] where 1=1",
+                  "and IsRequestable  = 'yes') ipg ",
+                  "ON carbon.ipconfigurationid   = ipg.ipconfigurationid ",
+                  "where 1=1 and ([DevOrg] = 'ipg' or [DevSubOrg] = 'DTEG') ",
+                  "union ",
+                  "select distinct carbon.[IPConfigurationId] as [ID] ",
+                  ", 'configuration' as [IDTypeUsed]",
+                  "from [V_IPG_Carbon_Milestone] carbon",
+                  "join (select distinct  ipconfigurationid from [V_IPG_CARBON_IPCONFIGURATION] where 1=1",
+                  "and IsRequestable  = 'yes') ipg ",
+                  "ON carbon.ipconfigurationid   = ipg.ipconfigurationid ",
+                  "where 1=1 and ([DevOrg] = 'IPG' or [DevSubOrg] = 'DTEG')</RSQueryCommandText><RSQueryCommandType>Text</RSQueryCommandType><RSQueryDesignState></RSQueryDesignState>]]></AnnotationContent></Gemini>"
+                ]
+              }
+            ]
+          }
+        ],
+        "annotations": [
+          {
+            "name": "_TM_ExtProp_QueryDefinition",
+            "value": [
+              "select distinct [MilestoneId] as [ID]",
+              ", 'milestone' as [IDTypeUsed]",
+              "from [V_IPG_Carbon_Milestone] carbon",
+              "join (select distinct  ipconfigurationid from [V_IPG_CARBON_IPCONFIGURATION] where 1=1",
+              "and IsRequestable  = 'yes') ipg ",
+              "ON carbon.ipconfigurationid   = ipg.ipconfigurationid ",
+              "where 1=1 and ([DevOrg] = 'ipg' or [DevSubOrg] = 'DTEG') ",
+              "union ",
+              "select distinct carbon.[IPConfigurationId] as [ID] ",
+              ", 'configuration' as [IDTypeUsed]",
+              "from [V_IPG_Carbon_Milestone] carbon",
+              "join (select distinct  ipconfigurationid from [V_IPG_CARBON_IPCONFIGURATION] where 1=1",
+              "and IsRequestable  = 'yes') ipg ",
+              "ON carbon.ipconfigurationid   = ipg.ipconfigurationid ",
+              "where 1=1 and ([DevOrg] = 'IPG' or [DevSubOrg] = 'DTEG')"
+            ]
+          },
+          {
+            "name": "_TM_ExtProp_DbTableName",
+            "value": "CarbonBridge"
+          },
+          {
+            "name": "QueryEditorSerialization",
+            "value": [
+              "<?xml version=\"1.0\" encoding=\"UTF-16\"?><Gemini xmlns=\"QueryEditorSerialization\"><AnnotationContent><![CDATA[<RSQueryCommandText>select distinct [MilestoneId] as [ID]",
+              ", 'milestone' as [IDTypeUsed]",
+              "from [V_IPG_Carbon_Milestone] carbon",
+              "join (select distinct  ipconfigurationid from [V_IPG_CARBON_IPCONFIGURATION] where 1=1",
+              "and IsRequestable  = 'yes') ipg ",
+              "ON carbon.ipconfigurationid   = ipg.ipconfigurationid ",
+              "where 1=1 and ([DevOrg] = 'ipg' or [DevSubOrg] = 'DTEG') ",
+              "union ",
+              "select distinct carbon.[IPConfigurationId] as [ID] ",
+              ", 'configuration' as [IDTypeUsed]",
+              "from [V_IPG_Carbon_Milestone] carbon",
+              "join (select distinct  ipconfigurationid from [V_IPG_CARBON_IPCONFIGURATION] where 1=1",
+              "and IsRequestable  = 'yes') ipg ",
+              "ON carbon.ipconfigurationid   = ipg.ipconfigurationid ",
+              "where 1=1 and ([DevOrg] = 'IPG' or [DevSubOrg] = 'DTEG')</RSQueryCommandText><RSQueryCommandType>Text</RSQueryCommandType><RSQueryDesignState></RSQueryDesignState>]]></AnnotationContent></Gemini>"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "QuerySearchable",
+        "columns": [
+          {
+            "type": "calculatedTableColumn",
+            "name": "ID",
+            "dataType": "int64",
+            "isNameInferred": true,
+            "isDataTypeInferred": true,
+            "sourceColumn": "[ID]"
+          },
+          {
+            "type": "calculatedTableColumn",
+            "name": "doc_type",
+            "dataType": "string",
+            "isNameInferred": true,
+            "isDataTypeInferred": true,
+            "sourceColumn": "[doc_type]"
+          },
+          {
+            "type": "calculatedTableColumn",
+            "name": "url",
+            "dataType": "string",
+            "isNameInferred": true,
+            "isDataTypeInferred": true,
+            "sourceColumn": "[url]",
+            "dataCategory": "WebUrl"
+          },
+          {
+            "type": "calculatedTableColumn",
+            "name": "visible",
+            "dataType": "int64",
+            "isNameInferred": true,
+            "isDataTypeInferred": true,
+            "sourceColumn": "[visible]"
+          },
+          {
+            "type": "calculatedTableColumn",
+            "name": "active",
+            "dataType": "int64",
+            "isNameInferred": true,
+            "isDataTypeInferred": true,
+            "sourceColumn": "[active]"
+          },
+          {
+            "type": "calculatedTableColumn",
+            "name": "code",
+            "dataType": "string",
+            "isNameInferred": true,
+            "isDataTypeInferred": true,
+            "sourceColumn": "[code]"
+          },
+          {
+            "type": "calculatedTableColumn",
+            "name": "author",
+            "dataType": "string",
+            "isNameInferred": true,
+            "isDataTypeInferred": true,
+            "sourceColumn": "[author]"
+          },
+          {
+            "type": "calculatedTableColumn",
+            "name": "created",
+            "dataType": "int64",
+            "isNameInferred": true,
+            "isDataTypeInferred": true,
+            "sourceColumn": "[created]"
+          }
+        ],
+        "partitions": [
+          {
+            "name": "CalculatedTable 1",
+            "source": {
+              "type": "calculated",
+              "expression": [
+                " Filter(UNION(",
+                "SELECTCOLUMNS(QueryDocTracking, \"ID\", QueryDocTracking[intel_id_int], \"doc_type\", QueryDocTracking[f_doc], \"url\", QueryDocTracking[f_url], \"visible\", QueryDocTracking[visible], \"active\", QueryDocTracking[active_int], \"code\", QueryDocTracking[code], \"author\", QueryDocTracking[f_user_title], \"created\", QueryDocTracking[CreatedWW]), ",
+                "SELECTCOLUMNS(QueryReleaseNotes, \"ID\", QueryReleaseNotes[ID], \"doc_type\", QueryReleaseNotes[doc_type], \"url\", QueryReleaseNotes[URL], \"visible\", QueryReleaseNotes[visible], \"active\", QueryReleaseNotes[f_active], \"code\", QueryReleaseNotes[code], \"author\", \"\", \"created\", QueryReleaseNotes[TrendYYYYWW])), [visible] = 1 && [active] = 1)",
+                "// Need to create a separate query for the Searchable Doc Dashboard because cannot pull in Carbon Combined values into QueryUnion (ex ID: 22015700375) and need to keep UniqueKey in Query Union for Scorecard mapping "
+              ]
+            }
+          }
+        ],
+        "measures": [
+          {
+            "name": "CountActiveSearchable",
+            "expression": " CALCULATE(COUNT(QuerySearchable[ID]), QuerySearchable[active] = 1, QuerySearchable[visible] = 1)"
+          }
+        ]
+      },
+      {
+        "name": "QueryTRM",
+        "columns": [
+          {
+            "name": "configuration",
+            "dataType": "string",
+            "sourceColumn": "configuration",
+            "sourceProviderType": "VarChar"
+          },
+          {
+            "name": "ipconfigurationid",
+            "dataType": "int64",
+            "sourceColumn": "ipconfigurationid",
+            "sourceProviderType": "BigInt"
+          },
+          {
+            "name": "UsingProduct",
+            "dataType": "string",
+            "sourceColumn": "UsingProduct",
+            "sourceProviderType": "VarChar"
+          },
+          {
+            "name": "IEDate",
+            "dataType": "int64",
+            "sourceColumn": "IEDate",
+            "sourceProviderType": "Integer"
+          },
+          {
+            "name": "IEMilestone",
+            "dataType": "int64",
+            "sourceColumn": "IEMilestone",
+            "sourceProviderType": "BigInt"
+          },
+          {
+            "name": "IACDate",
+            "dataType": "int64",
+            "sourceColumn": "IACDate",
+            "sourceProviderType": "Integer"
+          },
+          {
+            "name": "IACMilestone",
+            "dataType": "int64",
+            "sourceColumn": "IACMilestone",
+            "sourceProviderType": "BigInt"
+          },
+          {
+            "type": "calculated",
+            "name": "UniqueKey",
+            "dataType": "string",
+            "isDataTypeInferred": true,
+            "expression": " [IACMilestone] & \"_TRM_\" & [UsingProduct]"
+          },
+          {
+            "type": "calculated",
+            "name": "IAC_WWSeq",
+            "dataType": "int64",
+            "isDataTypeInferred": true,
+            "expression": " LOOKUPVALUE(QueryIntelWW[wwseqnbr], QueryIntelWW[Intel Year-Work Week], [IACDate])"
+          },
+          {
+            "type": "calculated",
+            "name": "IE_WWSeq",
+            "dataType": "int64",
+            "isDataTypeInferred": true,
+            "expression": " LOOKUPVALUE(QueryIntelWW[wwseqnbr], QueryIntelWW[Intel Year-Work Week], [IEDate])"
+          },
+          {
+            "type": "calculated",
+            "name": "occur",
+            "dataType": "int64",
+            "isDataTypeInferred": true,
+            "expression": [
+              " ",
+              "Var numID = [UniqueKey]",
+              "RETURN",
+              "",
+              "CALCULATE(",
+              "    COUNTROWS(QueryTRM),",
+              "    all(QueryTRM),",
+              "    QueryTRM[UniqueKey] = numID",
+              ")"
+            ]
+          },
+          {
+            "type": "calculated",
+            "name": "minIE_WWSeq",
+            "dataType": "int64",
+            "isDataTypeInferred": true,
+            "expression": [
+              " ",
+              "var milestone1 = [IACMilestone]",
+              "var usingProd1 = [UsingProduct]",
+              "Return(Calculate(min([IE_WWSeq]), ALL(QueryTRM), QueryTRM[IACMilestone] = milestone1, QueryTRM[UsingProduct] = usingProd1))"
+            ]
+          }
+        ],
+        "partitions": [
+          {
+            "name": "QueryTRM",
+            "dataView": "full",
+            "source": {
+              "type": "query",
+              "query": [
+                "select * from ",
+                "",
+                "(select distinct IACFinal.configuration, IACFinal.ipconfigurationid, IACFinal.[UsingProduct], IEFinal.IEDate, IEFinal.milestoneID ",
+                "as IEMilestone, ",
+                "IACFinal.IACDate, IACFinal.milestoneID as IACMilestone",
+                "from ",
+                "(select IE.configuration, IE.ipconfigurationid, product.[product] as [UsingProduct], IE.IEDate,IE.milestoneID",
+                "from",
+                "(SELECT configuration",
+                ",ipconfigurationid",
+                ",usingproducts",
+                ", milestoneID",
+                ", cast(min(",
+                "isnull([TrendYYYYWW],[PorYYYYWW])) as int) ",
+                "AS IEDate",
+                "FROM [V_IPG_CARBON_MILESTONE] a",
+                "WHERE 1=1",
+                "AND (devorg = 'IPG' or [DevSubOrg] = 'DTEG') and [drop] ='IP Execution Commit (IE)'",
+                "and usingproducts is not null and usingproducts <> '' -- not sure if this should be included",
+                "GROUP BY configuration",
+                ",ipconfigurationid",
+                ",usingproducts",
+                ", milestoneID",
+                ")IE",
+                "join cig_product_ti_cached product",
+                "ON ',' + IE.[UsingProducts] + ',' LIKE '%' + product.[product] + ',%') IEFinal",
+                "",
+                "right join ",
+                "",
+                "(select IAC.configuration, IAC.ipconfigurationid, product.[product] as [UsingProduct], IAC.IACDate,IAC.milestoneID",
+                "from",
+                "(SELECT configuration",
+                ",ipconfigurationid",
+                ",usingproducts",
+                ", milestoneID",
+                ", cast(min(",
+                "isnull([TrendYYYYWW],[PorYYYYWW])) as int) ",
+                "AS IACDate",
+                "FROM [V_IPG_CARBON_MILESTONE] a",
+                "WHERE 1=1",
+                "AND (devorg = 'IPG'or [DevSubOrg] = 'DTEG') and [drop] ='IP Architecture Complete (IAC)'",
+                "--and usingproducts is not null and usingproducts <> ''",
+                "GROUP BY configuration",
+                ",ipconfigurationid",
+                ",usingproducts",
+                ", milestoneID",
+                ")IAC",
+                "left join cig_product_ti_cached product",
+                "ON ',' + IAC.[UsingProducts] + ',' LIKE '%' + product.[product] + ',%'",
+                "",
+                "",
+                ") IACFinal",
+                "on IEFinal.UsingProduct = IACFinal.UsingProduct and IEFinal.configuration = IACFinal.configuration) usingProd"
+              ],
+              "dataSource": "IBI"
+            },
+            "annotations": [
+              {
+                "name": "QueryEditorSerialization",
+                "value": [
+                  "<?xml version=\"1.0\" encoding=\"UTF-16\"?><Gemini xmlns=\"QueryEditorSerialization\"><AnnotationContent><![CDATA[<RSQueryCommandText>select * from ",
+                  "",
+                  "(select distinct IACFinal.configuration, IACFinal.ipconfigurationid, IACFinal.[UsingProduct], IEFinal.IEDate, IEFinal.milestoneID ",
+                  "as IEMilestone, ",
+                  "IACFinal.IACDate, IACFinal.milestoneID as IACMilestone",
+                  "from ",
+                  "(select IE.configuration, IE.ipconfigurationid, product.[product] as [UsingProduct], IE.IEDate,IE.milestoneID",
+                  "from",
+                  "(SELECT configuration",
+                  ",ipconfigurationid",
+                  ",usingproducts",
+                  ", milestoneID",
+                  ", cast(min(",
+                  "isnull([TrendYYYYWW],[PorYYYYWW])) as int) ",
+                  "AS IEDate",
+                  "FROM [V_IPG_CARBON_MILESTONE] a",
+                  "WHERE 1=1",
+                  "AND (devorg = 'IPG' or [DevSubOrg] = 'DTEG') and [drop] ='IP Execution Commit (IE)'",
+                  "and usingproducts is not null and usingproducts <> '' -- not sure if this should be included",
+                  "GROUP BY configuration",
+                  ",ipconfigurationid",
+                  ",usingproducts",
+                  ", milestoneID",
+                  ")IE",
+                  "join cig_product_ti_cached product",
+                  "ON ',' + IE.[UsingProducts] + ',' LIKE '%' + product.[product] + ',%') IEFinal",
+                  "",
+                  "right join ",
+                  "",
+                  "(select IAC.configuration, IAC.ipconfigurationid, product.[product] as [UsingProduct], IAC.IACDate,IAC.milestoneID",
+                  "from",
+                  "(SELECT configuration",
+                  ",ipconfigurationid",
+                  ",usingproducts",
+                  ", milestoneID",
+                  ", cast(min(",
+                  "isnull([TrendYYYYWW],[PorYYYYWW])) as int) ",
+                  "AS IACDate",
+                  "FROM [V_IPG_CARBON_MILESTONE] a",
+                  "WHERE 1=1",
+                  "AND (devorg = 'IPG'or [DevSubOrg] = 'DTEG') and [drop] ='IP Architecture Complete (IAC)'",
+                  "--and usingproducts is not null and usingproducts <> ''",
+                  "GROUP BY configuration",
+                  ",ipconfigurationid",
+                  ",usingproducts",
+                  ", milestoneID",
+                  ")IAC",
+                  "left join cig_product_ti_cached product",
+                  "ON ',' + IAC.[UsingProducts] + ',' LIKE '%' + product.[product] + ',%'",
+                  "",
+                  "",
+                  ") IACFinal",
+                  "on IEFinal.UsingProduct = IACFinal.UsingProduct and IEFinal.configuration = IACFinal.configuration) usingProd</RSQueryCommandText><RSQueryCommandType>Text</RSQueryCommandType><RSQueryDesignState></RSQueryDesignState>]]></AnnotationContent></Gemini>"
+                ]
+              }
+            ]
+          }
+        ],
+        "annotations": [
+          {
+            "name": "_TM_ExtProp_QueryDefinition",
+            "value": [
+              "select * from ",
+              "",
+              "(select distinct IACFinal.configuration, IACFinal.ipconfigurationid, IACFinal.[UsingProduct], IEFinal.IEDate, IEFinal.milestoneID ",
+              "as IEMilestone, ",
+              "IACFinal.IACDate, IACFinal.milestoneID as IACMilestone",
+              "from ",
+              "(select IE.configuration, IE.ipconfigurationid, product.[product] as [UsingProduct], IE.IEDate,IE.milestoneID",
+              "from",
+              "(SELECT configuration",
+              ",ipconfigurationid",
+              ",usingproducts",
+              ", milestoneID",
+              ", cast(min(",
+              "isnull([TrendYYYYWW],[PorYYYYWW])) as int) ",
+              "AS IEDate",
+              "FROM [V_IPG_CARBON_MILESTONE] a",
+              "WHERE 1=1",
+              "AND (devorg = 'IPG' or [DevSubOrg] = 'DTEG') and [drop] ='IP Execution Commit (IE)'",
+              "and usingproducts is not null and usingproducts <> '' -- not sure if this should be included",
+              "GROUP BY configuration",
+              ",ipconfigurationid",
+              ",usingproducts",
+              ", milestoneID",
+              ")IE",
+              "join cig_product_ti_cached product",
+              "ON ',' + IE.[UsingProducts] + ',' LIKE '%' + product.[product] + ',%') IEFinal",
+              "",
+              "right join ",
+              "",
+              "(select IAC.configuration, IAC.ipconfigurationid, product.[product] as [UsingProduct], IAC.IACDate,IAC.milestoneID",
+              "from",
+              "(SELECT configuration",
+              ",ipconfigurationid",
+              ",usingproducts",
+              ", milestoneID",
+              ", cast(min(",
+              "isnull([TrendYYYYWW],[PorYYYYWW])) as int) ",
+              "AS IACDate",
+              "FROM [V_IPG_CARBON_MILESTONE] a",
+              "WHERE 1=1",
+              "AND (devorg = 'IPG'or [DevSubOrg] = 'DTEG') and [drop] ='IP Architecture Complete (IAC)'",
+              "--and usingproducts is not null and usingproducts <> ''",
+              "GROUP BY configuration",
+              ",ipconfigurationid",
+              ",usingproducts",
+              ", milestoneID",
+              ")IAC",
+              "left join cig_product_ti_cached product",
+              "ON ',' + IAC.[UsingProducts] + ',' LIKE '%' + product.[product] + ',%'",
+              "",
+              "",
+              ") IACFinal",
+              "on IEFinal.UsingProduct = IACFinal.UsingProduct and IEFinal.configuration = IACFinal.configuration) usingProd"
+            ]
+          },
+          {
+            "name": "_TM_ExtProp_DbTableName",
+            "value": "QueryTRM"
+          },
+          {
+            "name": "QueryEditorSerialization",
+            "value": [
+              "<?xml version=\"1.0\" encoding=\"UTF-16\"?><Gemini xmlns=\"QueryEditorSerialization\"><AnnotationContent><![CDATA[<RSQueryCommandText>select * from ",
+              "",
+              "(select distinct IACFinal.configuration, IACFinal.ipconfigurationid, IACFinal.[UsingProduct], IEFinal.IEDate, IEFinal.milestoneID ",
+              "as IEMilestone, ",
+              "IACFinal.IACDate, IACFinal.milestoneID as IACMilestone",
+              "from ",
+              "(select IE.configuration, IE.ipconfigurationid, product.[product] as [UsingProduct], IE.IEDate,IE.milestoneID",
+              "from",
+              "(SELECT configuration",
+              ",ipconfigurationid",
+              ",usingproducts",
+              ", milestoneID",
+              ", cast(min(",
+              "isnull([TrendYYYYWW],[PorYYYYWW])) as int) ",
+              "AS IEDate",
+              "FROM [V_IPG_CARBON_MILESTONE] a",
+              "WHERE 1=1",
+              "AND (devorg = 'IPG' or [DevSubOrg] = 'DTEG') and [drop] ='IP Execution Commit (IE)'",
+              "and usingproducts is not null and usingproducts <> '' -- not sure if this should be included",
+              "GROUP BY configuration",
+              ",ipconfigurationid",
+              ",usingproducts",
+              ", milestoneID",
+              ")IE",
+              "join cig_product_ti_cached product",
+              "ON ',' + IE.[UsingProducts] + ',' LIKE '%' + product.[product] + ',%') IEFinal",
+              "",
+              "right join ",
+              "",
+              "(select IAC.configuration, IAC.ipconfigurationid, product.[product] as [UsingProduct], IAC.IACDate,IAC.milestoneID",
+              "from",
+              "(SELECT configuration",
+              ",ipconfigurationid",
+              ",usingproducts",
+              ", milestoneID",
+              ", cast(min(",
+              "isnull([TrendYYYYWW],[PorYYYYWW])) as int) ",
+              "AS IACDate",
+              "FROM [V_IPG_CARBON_MILESTONE] a",
+              "WHERE 1=1",
+              "AND (devorg = 'IPG'or [DevSubOrg] = 'DTEG') and [drop] ='IP Architecture Complete (IAC)'",
+              "--and usingproducts is not null and usingproducts <> ''",
+              "GROUP BY configuration",
+              ",ipconfigurationid",
+              ",usingproducts",
+              ", milestoneID",
+              ")IAC",
+              "left join cig_product_ti_cached product",
+              "ON ',' + IAC.[UsingProducts] + ',' LIKE '%' + product.[product] + ',%'",
+              "",
+              "",
+              ") IACFinal",
+              "on IEFinal.UsingProduct = IACFinal.UsingProduct and IEFinal.configuration = IACFinal.configuration) usingProd</RSQueryCommandText><RSQueryCommandType>Text</RSQueryCommandType><RSQueryDesignState></RSQueryDesignState>]]></AnnotationContent></Gemini>"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "QueryIntelWW",
+        "columns": [
+          {
+            "name": "Intel Year-Work Week",
+            "dataType": "int64",
+            "sourceColumn": "Intel Year-Work Week",
+            "sourceProviderType": "Integer"
+          },
+          {
+            "type": "calculated",
+            "name": "wwseqnbr",
+            "dataType": "int64",
+            "isDataTypeInferred": true,
+            "expression": "CALCULATE(COUNTROWS(QueryIntelWW), QueryIntelWW[Intel Year-Work Week]<=EARLIER(QueryIntelWW[Intel Year-Work Week]))"
+          },
+          {
+            "name": "currentww",
+            "dataType": "int64",
+            "sourceColumn": "currentww"
+          }
+        ],
+        "partitions": [
+          {
+            "name": "QuerySequentialWW",
+            "dataView": "full",
+            "source": {
+              "type": "query",
+              "query": [
+                "select distinct [Intel Year-Work Week] ",
+                ", datepart(ww, getutcdate()) as currentww",
+                "from [v_time_day]",
+                "order by [Intel Year-Work Week] asc"
+              ],
+              "dataSource": "IBI"
+            },
+            "annotations": [
+              {
+                "name": "QueryEditorSerialization",
+                "value": [
+                  "<?xml version=\"1.0\" encoding=\"UTF-16\"?><Gemini xmlns=\"QueryEditorSerialization\"><AnnotationContent><![CDATA[<RSQueryCommandText>select distinct [Intel Year-Work Week] ",
+                  ", datepart(ww, getutcdate()) as currentww",
+                  "from [v_time_day]",
+                  "order by [Intel Year-Work Week] asc</RSQueryCommandText><RSQueryCommandType>Text</RSQueryCommandType><RSQueryDesignState></RSQueryDesignState>]]></AnnotationContent></Gemini>"
+                ]
+              }
+            ]
+          }
+        ],
+        "measures": [
+          {
+            "name": "currentSeqnbrWW",
+            "expression": " LOOKUPVALUE(QueryIntelWW[wwseqnbr], QueryIntelWW[Intel Year-Work Week], [CurrentWWDrop])"
+          },
+          {
+            "name": "currentWeek",
+            "expression": " FIRSTNONBLANK(QueryIntelWW[currentww], TRUE())"
+          },
+          {
+            "name": "Measure 3",
+            "expression": " [currentSeqnbrWW]"
+          }
+        ],
+        "annotations": [
+          {
+            "name": "_TM_ExtProp_QueryDefinition",
+            "value": [
+              "select distinct [Intel Year-Work Week] ",
+              ", datepart(ww, getutcdate()) as currentww",
+              "from [v_time_day]",
+              "order by [Intel Year-Work Week] asc"
+            ]
+          },
+          {
+            "name": "_TM_ExtProp_DbTableName",
+            "value": "QuerySequentialWW"
+          },
+          {
+            "name": "QueryEditorSerialization",
+            "value": [
+              "<?xml version=\"1.0\" encoding=\"UTF-16\"?><Gemini xmlns=\"QueryEditorSerialization\"><AnnotationContent><![CDATA[<RSQueryCommandText>select distinct [Intel Year-Work Week] ",
+              ", datepart(ww, getutcdate()) as currentww",
+              "from [v_time_day]",
+              "order by [Intel Year-Work Week] asc</RSQueryCommandText><RSQueryCommandType>Text</RSQueryCommandType><RSQueryDesignState></RSQueryDesignState>]]></AnnotationContent></Gemini>"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "QueryDS",
+        "columns": [
+          {
+            "name": "drop",
+            "dataType": "string",
+            "sourceColumn": "drop",
+            "sourceProviderType": "VarChar"
+          },
+          {
+            "name": "IDType",
+            "dataType": "string",
+            "sourceColumn": "IDType",
+            "sourceProviderType": "VarChar"
+          },
+          {
+            "name": "configuration",
+            "dataType": "string",
+            "sourceColumn": "configuration",
+            "sourceProviderType": "VarChar"
+          },
+          {
+            "name": "IPConfigurationID",
+            "dataType": "int64",
+            "sourceColumn": "IPConfigurationID",
+            "sourceProviderType": "BigInt"
+          },
+          {
+            "name": "ICDate",
+            "dataType": "int64",
+            "sourceColumn": "ICDate",
+            "sourceProviderType": "Integer"
+          },
+          {
+            "name": "milestoneID",
+            "dataType": "int64",
+            "sourceColumn": "milestoneID",
+            "sourceProviderType": "BigInt"
+          },
+          {
+            "name": "IEConfig",
+            "dataType": "int64",
+            "sourceColumn": "IEConfig",
+            "sourceProviderType": "BigInt"
+          },
+          {
+            "name": "IEDate",
+            "dataType": "int64",
+            "sourceColumn": "IEDate",
+            "sourceProviderType": "Integer"
+          },
+          {
+            "type": "calculated",
+            "name": "UniqueKey",
+            "dataType": "string",
+            "isDataTypeInferred": true,
+            "expression": " [IPConfigurationID] & \" _Datasheet\""
+          },
+          {
+            "type": "calculated",
+            "name": "IC_WWSeq",
+            "dataType": "int64",
+            "isDataTypeInferred": true,
+            "expression": " LOOKUPVALUE(QueryIntelWW[wwseqnbr], QueryIntelWW[Intel Year-Work Week], [ICDate])"
+          },
+          {
+            "type": "calculated",
+            "name": "IE_WWSeq",
+            "dataType": "int64",
+            "isDataTypeInferred": true,
+            "expression": " LOOKUPVALUE(QueryIntelWW[wwseqnbr], QueryIntelWW[Intel Year-Work Week], [IEDate])"
+          }
+        ],
+        "partitions": [
+          {
+            "name": "QueryDS",
+            "dataView": "full",
+            "source": {
+              "type": "query",
+              "query": [
+                "select ICFinal.drop, ICFinal.IDType, ICFinal.configuration, ICFinal.ID as [IPConfigurationID], ",
+                "ICFinal.[trendyyyyww] as [ICDate], ICFinal.[milestoneID],",
+                "IEFinal.[ipconfigurationID] as IEConfig, IEFinal.[IEDate]",
+                "",
+                "from v_ipg_earliestICIP2 ICFinal",
+                "",
+                "left join ",
+                "",
+                "(SELECT configuration",
+                ",ipconfigurationid",
+                ", cast(min(isnull([TrendYYYYWW],[PorYYYYWW])) as int) AS IEDate",
+                "FROM [V_IPG_CARBON_MILESTONE] a",
+                "WHERE 1=1",
+                "AND devorg = 'IPG' and [drop] = 'IP Execution Commit (IE)'",
+                "GROUP BY configuration",
+                ",ipconfigurationid",
+                ")IEFinal",
+                "",
+                "on ICFinal.ID = IEFinal.ipconfigurationid"
+              ],
+              "dataSource": "IBI"
+            },
+            "annotations": [
+              {
+                "name": "QueryEditorSerialization",
+                "value": [
+                  "<?xml version=\"1.0\" encoding=\"UTF-16\"?><Gemini xmlns=\"QueryEditorSerialization\"><AnnotationContent><![CDATA[<RSQueryCommandText>select ICFinal.drop, ICFinal.IDType, ICFinal.configuration, ICFinal.ID as [IPConfigurationID], ",
+                  "ICFinal.[trendyyyyww] as [ICDate], ICFinal.[milestoneID],",
+                  "IEFinal.[ipconfigurationID] as IEConfig, IEFinal.[IEDate]",
+                  "",
+                  "from v_ipg_earliestICIP2 ICFinal",
+                  "",
+                  "left join ",
+                  "",
+                  "(SELECT configuration",
+                  ",ipconfigurationid",
+                  ", cast(min(isnull([TrendYYYYWW],[PorYYYYWW])) as int) AS IEDate",
+                  "FROM [V_IPG_CARBON_MILESTONE] a",
+                  "WHERE 1=1",
+                  "AND devorg = 'IPG' and [drop] = 'IP Execution Commit (IE)'",
+                  "GROUP BY configuration",
+                  ",ipconfigurationid",
+                  ")IEFinal",
+                  "",
+                  "on ICFinal.ID = IEFinal.ipconfigurationid</RSQueryCommandText><RSQueryCommandType>Text</RSQueryCommandType><RSQueryDesignState></RSQueryDesignState>]]></AnnotationContent></Gemini>"
+                ]
+              }
+            ]
+          }
+        ],
+        "annotations": [
+          {
+            "name": "_TM_ExtProp_QueryDefinition",
+            "value": [
+              "select ICFinal.drop, ICFinal.IDType, ICFinal.configuration, ICFinal.ID as [IPConfigurationID], ",
+              "ICFinal.[trendyyyyww] as [ICDate], ICFinal.[milestoneID],",
+              "IEFinal.[ipconfigurationID] as IEConfig, IEFinal.[IEDate]",
+              "",
+              "from v_ipg_earliestICIP2 ICFinal",
+              "",
+              "left join ",
+              "",
+              "(SELECT configuration",
+              ",ipconfigurationid",
+              ", cast(min(isnull([TrendYYYYWW],[PorYYYYWW])) as int) AS IEDate",
+              "FROM [V_IPG_CARBON_MILESTONE] a",
+              "WHERE 1=1",
+              "AND devorg = 'IPG' and [drop] = 'IP Execution Commit (IE)'",
+              "GROUP BY configuration",
+              ",ipconfigurationid",
+              ")IEFinal",
+              "",
+              "on ICFinal.ID = IEFinal.ipconfigurationid"
+            ]
+          },
+          {
+            "name": "_TM_ExtProp_DbTableName",
+            "value": "QueryDS"
+          },
+          {
+            "name": "QueryEditorSerialization",
+            "value": [
+              "<?xml version=\"1.0\" encoding=\"UTF-16\"?><Gemini xmlns=\"QueryEditorSerialization\"><AnnotationContent><![CDATA[<RSQueryCommandText>select ICFinal.drop, ICFinal.IDType, ICFinal.configuration, ICFinal.ID as [IPConfigurationID], ",
+              "ICFinal.[trendyyyyww] as [ICDate], ICFinal.[milestoneID],",
+              "IEFinal.[ipconfigurationID] as IEConfig, IEFinal.[IEDate]",
+              "",
+              "from v_ipg_earliestICIP2 ICFinal",
+              "",
+              "left join ",
+              "",
+              "(SELECT configuration",
+              ",ipconfigurationid",
+              ", cast(min(isnull([TrendYYYYWW],[PorYYYYWW])) as int) AS IEDate",
+              "FROM [V_IPG_CARBON_MILESTONE] a",
+              "WHERE 1=1",
+              "AND devorg = 'IPG' and [drop] = 'IP Execution Commit (IE)'",
+              "GROUP BY configuration",
+              ",ipconfigurationid",
+              ")IEFinal",
+              "",
+              "on ICFinal.ID = IEFinal.ipconfigurationid</RSQueryCommandText><RSQueryCommandType>Text</RSQueryCommandType><RSQueryDesignState></RSQueryDesignState>]]></AnnotationContent></Gemini>"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "QueryScorecard",
+        "columns": [
+          {
+            "name": "Drop",
+            "dataType": "string",
+            "sourceColumn": "Drop",
+            "sourceProviderType": "VarChar"
+          },
+          {
+            "name": "Configuration",
+            "dataType": "string",
+            "sourceColumn": "Configuration",
+            "sourceProviderType": "VarChar"
+          },
+          {
+            "name": "TrendYYYYWW",
+            "dataType": "int64",
+            "sourceColumn": "TrendYYYYWW",
+            "sourceProviderType": "Integer"
+          },
+          {
+            "name": "ConsiderID",
+            "dataType": "string",
+            "sourceColumn": "ConsiderID",
+            "sourceProviderType": "VarChar"
+          },
+          {
+            "name": "Complete",
+            "dataType": "string",
+            "sourceColumn": "Complete"
+          },
+          {
+            "name": "IDType",
+            "dataType": "string",
+            "sourceColumn": "IDType"
+          },
+          {
+            "name": "ID",
+            "dataType": "int64",
+            "sourceColumn": "ID"
+          },
+          {
+            "name": "DocType",
+            "dataType": "string",
+            "sourceColumn": "DocType"
+          },
+          {
+            "type": "calculated",
+            "name": "UniqueKey",
+            "dataType": "string",
+            "isDataTypeInferred": true,
+            "expression": " [ID]&\"_\"&[DocType]"
+          },
+          {
+            "type": "calculated",
+            "name": "trendSeq",
+            "dataType": "int64",
+            "isDataTypeInferred": true,
+            "expression": " LOOKUPVALUE(QueryIntelWW[wwseqnbr], QueryIntelWW[Intel Year-Work Week], [TrendYYYYWW])"
+          }
+        ],
+        "partitions": [
+          {
+            "name": "QueryDropTypes",
+            "dataView": "full",
+            "source": {
+              "type": "query",
+              "query": [
+                "select mile.[Drop], 'milestone' as [IDType], mile.[Configuration], mile.[MilestoneID] as [ID], ",
+                "",
+                "isnull(mile.[TrendYYYYWW], mile.[PORYYYYWW]) as [TrendYYYYWW], mile.[Complete],",
+                "case ",
+                "\twhen mile.[Drop] like 'UV%' then 'exists' ",
+                "\twhen mile.[Drop] = 'eFV' then 'exists'  ",
+                "\twhen mile.[Drop] = 'FV' then 'exists' ",
+                "\twhen mile.[Drop] = 'IP Execution Commit (IE)' then 'exists' ",
+                "\twhen mile.[Drop] = 'IP Concept (IC)' then 'exists' ",
+                "\twhen mile.[Drop] = 'IP Concept Refresh (ICR)' then 'exists' ",
+                "\twhen mile.[Drop] = 'IP Execution Commit (IE)' then 'exists'",
+                "\telse NULL ",
+                "end as [ConsiderID]",
+                ", case ",
+                "\twhen [Drop] like 'UV%' then 'integrationGuide'  ",
+                "\twhen [Drop] = 'IP Execution Commit (IE)' then 'IE-Commit' ",
+                "\twhen [Drop] = 'eFV' then 'integrationGuide'  ",
+                "\twhen [Drop] = 'FV' then 'integrationGuide' ",
+                "\twhen [Drop] = 'IP Concept (IC)' then 'IP-Concept' ",
+                "\twhen [Drop] = 'IP Concept Refresh (ICR)' then 'IC-Refresh' ",
+                "\telse Null ",
+                "end as [DocType]",
+                "from V_IPG_Carbon_Milestone as mile",
+                "join (select distinct  ipconfigurationid from [V_IPG_CARBON_IPCONFIGURATION] where 1=1",
+                "and IsRequestable  = 'yes') ipg ",
+                "  ON mile.ipconfigurationid   = ipg.ipconfigurationid ",
+                "where 1=1 and ([DevOrg] = 'ipg' or [DevSubOrg] = 'DTEG') ",
+                "and considerid = 'exists'"
+              ],
+              "dataSource": "IBI"
+            },
+            "annotations": [
+              {
+                "name": "QueryEditorSerialization",
+                "value": [
+                  "<?xml version=\"1.0\" encoding=\"UTF-16\"?><Gemini xmlns=\"QueryEditorSerialization\"><AnnotationContent><![CDATA[<RSQueryCommandText>select mile.[Drop], 'milestone' as [IDType], mile.[Configuration], mile.[MilestoneID] as [ID], ",
+                  "",
+                  "isnull(mile.[TrendYYYYWW], mile.[PORYYYYWW]) as [TrendYYYYWW], mile.[Complete],",
+                  "case ",
+                  "\twhen mile.[Drop] like 'UV%' then 'exists' ",
+                  "\twhen mile.[Drop] = 'eFV' then 'exists'  ",
+                  "\twhen mile.[Drop] = 'FV' then 'exists' ",
+                  "\twhen mile.[Drop] = 'IP Execution Commit (IE)' then 'exists' ",
+                  "\twhen mile.[Drop] = 'IP Concept (IC)' then 'exists' ",
+                  "\twhen mile.[Drop] = 'IP Concept Refresh (ICR)' then 'exists' ",
+                  "\twhen mile.[Drop] = 'IP Execution Commit (IE)' then 'exists'",
+                  "\telse NULL ",
+                  "end as [ConsiderID]",
+                  ", case ",
+                  "\twhen [Drop] like 'UV%' then 'integrationGuide'  ",
+                  "\twhen [Drop] = 'IP Execution Commit (IE)' then 'IE-Commit' ",
+                  "\twhen [Drop] = 'eFV' then 'integrationGuide'  ",
+                  "\twhen [Drop] = 'FV' then 'integrationGuide' ",
+                  "\twhen [Drop] = 'IP Concept (IC)' then 'IP-Concept' ",
+                  "\twhen [Drop] = 'IP Concept Refresh (ICR)' then 'IC-Refresh' ",
+                  "\telse Null ",
+                  "end as [DocType]",
+                  "from V_IPG_Carbon_Milestone as mile",
+                  "join (select distinct  ipconfigurationid from [V_IPG_CARBON_IPCONFIGURATION] where 1=1",
+                  "and IsRequestable  = 'yes') ipg ",
+                  "  ON mile.ipconfigurationid   = ipg.ipconfigurationid ",
+                  "where 1=1 and ([DevOrg] = 'ipg' or [DevSubOrg] = 'DTEG') ",
+                  "and considerid = 'exists'</RSQueryCommandText><RSQueryCommandType>Text</RSQueryCommandType><RSQueryDesignState></RSQueryDesignState>]]></AnnotationContent></Gemini>"
+                ]
+              }
+            ]
+          }
+        ],
+        "measures": [
+          {
+            "name": "CurrentWWDrop",
+            "expression": " max(QueryIntelWW[currentww])"
+          }
+        ],
+        "annotations": [
+          {
+            "name": "_TM_ExtProp_QueryDefinition",
+            "value": [
+              "select mile.[Drop], 'milestone' as [IDType], mile.[Configuration], mile.[MilestoneID] as [ID], ",
+              "",
+              "isnull(mile.[TrendYYYYWW], mile.[PORYYYYWW]) as [TrendYYYYWW], mile.[Complete],",
+              "case ",
+              "\twhen mile.[Drop] like 'UV%' then 'exists' ",
+              "\twhen mile.[Drop] = 'eFV' then 'exists'  ",
+              "\twhen mile.[Drop] = 'FV' then 'exists' ",
+              "\twhen mile.[Drop] = 'IP Execution Commit (IE)' then 'exists' ",
+              "\twhen mile.[Drop] = 'IP Concept (IC)' then 'exists' ",
+              "\twhen mile.[Drop] = 'IP Concept Refresh (ICR)' then 'exists' ",
+              "\twhen mile.[Drop] = 'IP Execution Commit (IE)' then 'exists'",
+              "\telse NULL ",
+              "end as [ConsiderID]",
+              ", case ",
+              "\twhen [Drop] like 'UV%' then 'integrationGuide'  ",
+              "\twhen [Drop] = 'IP Execution Commit (IE)' then 'IE-Commit' ",
+              "\twhen [Drop] = 'eFV' then 'integrationGuide'  ",
+              "\twhen [Drop] = 'FV' then 'integrationGuide' ",
+              "\twhen [Drop] = 'IP Concept (IC)' then 'IP-Concept' ",
+              "\twhen [Drop] = 'IP Concept Refresh (ICR)' then 'IC-Refresh' ",
+              "\telse Null ",
+              "end as [DocType]",
+              "from V_IPG_Carbon_Milestone as mile",
+              "join (select distinct  ipconfigurationid from [V_IPG_CARBON_IPCONFIGURATION] where 1=1",
+              "and IsRequestable  = 'yes') ipg ",
+              "  ON mile.ipconfigurationid   = ipg.ipconfigurationid ",
+              "where 1=1 and ([DevOrg] = 'ipg' or [DevSubOrg] = 'DTEG') ",
+              "and considerid = 'exists'"
+            ]
+          },
+          {
+            "name": "_TM_ExtProp_DbTableName",
+            "value": "QueryDropTypes"
+          },
+          {
+            "name": "QueryEditorSerialization",
+            "value": [
+              "<?xml version=\"1.0\" encoding=\"UTF-16\"?><Gemini xmlns=\"QueryEditorSerialization\"><AnnotationContent><![CDATA[<RSQueryCommandText>select mile.[Drop], 'milestone' as [IDType], mile.[Configuration], mile.[MilestoneID] as [ID], ",
+              "",
+              "isnull(mile.[TrendYYYYWW], mile.[PORYYYYWW]) as [TrendYYYYWW], mile.[Complete],",
+              "case ",
+              "\twhen mile.[Drop] like 'UV%' then 'exists' ",
+              "\twhen mile.[Drop] = 'eFV' then 'exists'  ",
+              "\twhen mile.[Drop] = 'FV' then 'exists' ",
+              "\twhen mile.[Drop] = 'IP Execution Commit (IE)' then 'exists' ",
+              "\twhen mile.[Drop] = 'IP Concept (IC)' then 'exists' ",
+              "\twhen mile.[Drop] = 'IP Concept Refresh (ICR)' then 'exists' ",
+              "\twhen mile.[Drop] = 'IP Execution Commit (IE)' then 'exists'",
+              "\telse NULL ",
+              "end as [ConsiderID]",
+              ", case ",
+              "\twhen [Drop] like 'UV%' then 'integrationGuide'  ",
+              "\twhen [Drop] = 'IP Execution Commit (IE)' then 'IE-Commit' ",
+              "\twhen [Drop] = 'eFV' then 'integrationGuide'  ",
+              "\twhen [Drop] = 'FV' then 'integrationGuide' ",
+              "\twhen [Drop] = 'IP Concept (IC)' then 'IP-Concept' ",
+              "\twhen [Drop] = 'IP Concept Refresh (ICR)' then 'IC-Refresh' ",
+              "\telse Null ",
+              "end as [DocType]",
+              "from V_IPG_Carbon_Milestone as mile",
+              "join (select distinct  ipconfigurationid from [V_IPG_CARBON_IPCONFIGURATION] where 1=1",
+              "and IsRequestable  = 'yes') ipg ",
+              "  ON mile.ipconfigurationid   = ipg.ipconfigurationid ",
+              "where 1=1 and ([DevOrg] = 'ipg' or [DevSubOrg] = 'DTEG') ",
+              "and considerid = 'exists'</RSQueryCommandText><RSQueryCommandType>Text</RSQueryCommandType><RSQueryDesignState></RSQueryDesignState>]]></AnnotationContent></Gemini>"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "QueryDateWW",
+        "columns": [
+          {
+            "name": "date",
+            "dataType": "string",
+            "sourceColumn": "date",
+            "sourceProviderType": "VarChar"
+          },
+          {
+            "name": "Intel Year-Work Week",
+            "dataType": "int64",
+            "sourceColumn": "Intel Year-Work Week",
+            "sourceProviderType": "Integer"
+          }
+        ],
+        "partitions": [
+          {
+            "name": "QueryDateWW",
+            "dataView": "full",
+            "source": {
+              "type": "query",
+              "query": "select [date], [Intel Year-Work Week] from v_time_day",
+              "dataSource": "IBI"
+            },
+            "annotations": [
+              {
+                "name": "QueryEditorSerialization",
+                "value": "<?xml version=\"1.0\" encoding=\"UTF-16\"?><Gemini xmlns=\"QueryEditorSerialization\"><AnnotationContent><![CDATA[<RSQueryCommandText>select [date], [Intel Year-Work Week] from v_time_day</RSQueryCommandText><RSQueryCommandType>Text</RSQueryCommandType><RSQueryDesignState></RSQueryDesignState>]]></AnnotationContent></Gemini>"
+              }
+            ]
+          }
+        ],
+        "annotations": [
+          {
+            "name": "_TM_ExtProp_QueryDefinition",
+            "value": "select [date], [Intel Year-Work Week] from v_time_day"
+          },
+          {
+            "name": "_TM_ExtProp_DbTableName",
+            "value": "QueryDateWW"
+          },
+          {
+            "name": "QueryEditorSerialization",
+            "value": "<?xml version=\"1.0\" encoding=\"UTF-16\"?><Gemini xmlns=\"QueryEditorSerialization\"><AnnotationContent><![CDATA[<RSQueryCommandText>select [date], [Intel Year-Work Week] from v_time_day</RSQueryCommandText><RSQueryCommandType>Text</RSQueryCommandType><RSQueryDesignState></RSQueryDesignState>]]></AnnotationContent></Gemini>"
+          }
+        ]
+      },
+      {
+        "name": "QueryArchive",
+        "columns": [
+          {
+            "type": "calculatedTableColumn",
+            "name": "ID",
+            "dataType": "int64",
+            "isNameInferred": true,
+            "isDataTypeInferred": true,
+            "sourceColumn": "[ID]"
+          },
+          {
+            "type": "calculatedTableColumn",
+            "name": "doc_type",
+            "dataType": "string",
+            "isNameInferred": true,
+            "isDataTypeInferred": true,
+            "sourceColumn": "[doc_type]"
+          },
+          {
+            "type": "calculatedTableColumn",
+            "name": "url",
+            "dataType": "string",
+            "isNameInferred": true,
+            "isDataTypeInferred": true,
+            "sourceColumn": "[url]"
+          },
+          {
+            "type": "calculatedTableColumn",
+            "name": "visible",
+            "dataType": "int64",
+            "isNameInferred": true,
+            "isDataTypeInferred": true,
+            "sourceColumn": "[visible]"
+          },
+          {
+            "type": "calculatedTableColumn",
+            "name": "active",
+            "dataType": "int64",
+            "isNameInferred": true,
+            "isDataTypeInferred": true,
+            "sourceColumn": "[active]"
+          },
+          {
+            "type": "calculatedTableColumn",
+            "name": "code",
+            "dataType": "string",
+            "isNameInferred": true,
+            "isDataTypeInferred": true,
+            "sourceColumn": "[code]"
+          },
+          {
+            "type": "calculatedTableColumn",
+            "name": "author",
+            "dataType": "string",
+            "isNameInferred": true,
+            "isDataTypeInferred": true,
+            "sourceColumn": "[author]"
+          },
+          {
+            "type": "calculatedTableColumn",
+            "name": "created",
+            "dataType": "int64",
+            "isNameInferred": true,
+            "isDataTypeInferred": true,
+            "sourceColumn": "[created]"
+          },
+          {
+            "type": "calculatedTableColumn",
+            "name": "archive",
+            "dataType": "string",
+            "isNameInferred": true,
+            "isDataTypeInferred": true,
+            "sourceColumn": "[archive]"
+          },
+          {
+            "type": "calculated",
+            "name": "mark",
+            "dataType": "string",
+            "isDataTypeInferred": true,
+            "expression": " LOOKUPVALUE(QueryRequestable[isrequestable], QueryRequestable[ID], [ID])"
+          }
+        ],
+        "partitions": [
+          {
+            "name": "CalculatedTable 1",
+            "source": {
+              "type": "calculated",
+              "expression": [
+                " FILTER(SELECTCOLUMNS(QueryDocTracking, \"ID\", QueryDocTracking[intel_id_int], \"doc_type\", QueryDocTracking[f_doc], \"url\", QueryDocTracking[f_url], \"visible\", QueryDocTracking[visible], \"active\", QueryDocTracking[active_int], \"code\", QueryDocTracking[code], \"author\", QueryDocTracking[f_user_title], \"created\", QueryDocTracking[CreatedWW], \"archive\", QueryDocTracking[f_archive]), [archive] = \"false\" && NOT([doc_type] = \"IP-Concept\"))",
+                ""
+              ]
+            }
+          }
+        ],
+        "measures": [
+          {
+            "name": "MoveToArchive",
+            "expression": " COUNTROWS(FILTER(All(QueryArchive), [mark] = \"no\"))"
+          }
+        ]
+      },
+      {
+        "name": "QueryRequestable",
+        "columns": [
+          {
+            "name": "isrequestable",
+            "dataType": "string",
+            "sourceColumn": "isrequestable",
+            "sourceProviderType": "VarChar"
+          },
+          {
+            "name": "configuration",
+            "dataType": "string",
+            "sourceColumn": "configuration",
+            "sourceProviderType": "VarChar"
+          },
+          {
+            "name": "ID",
+            "dataType": "int64",
+            "sourceColumn": "ID"
+          }
+        ],
+        "partitions": [
+          {
+            "name": "QueryRequestable",
+            "dataView": "full",
+            "source": {
+              "type": "query",
+              "query": [
+                "select distinct milestoneID as [ID], isrequestable, configuration from ",
+                "v_ipg_carbon_milestone miles",
+                "left join ",
+                "(select isRequestable, ipconfigurationID, name from v_ipg_carbon_ipconfiguration) config",
+                "on miles.configuration = config.name",
+                "where isRequestable = 'No' and ([DevOrg] = 'ipg' or [DevSubOrg] = 'DTEG')",
+                "",
+                "union ",
+                "",
+                "select ipconfigurationID as [ID], isRequestable, name as [configuration] from v_ipg_carbon_ipconfiguration",
+                "where isRequestable = 'No'"
+              ],
+              "dataSource": "IBI"
+            },
+            "annotations": [
+              {
+                "name": "QueryEditorSerialization",
+                "value": [
+                  "<?xml version=\"1.0\" encoding=\"UTF-16\"?><Gemini xmlns=\"QueryEditorSerialization\"><AnnotationContent><![CDATA[<RSQueryCommandText>select distinct milestoneID as [ID], isrequestable, configuration from ",
+                  "v_ipg_carbon_milestone miles",
+                  "left join ",
+                  "(select isRequestable, ipconfigurationID, name from v_ipg_carbon_ipconfiguration) config",
+                  "on miles.configuration = config.name",
+                  "where isRequestable = 'No' and ([DevOrg] = 'ipg' or [DevSubOrg] = 'DTEG')",
+                  "",
+                  "union ",
+                  "",
+                  "select ipconfigurationID as [ID], isRequestable, name as [configuration] from v_ipg_carbon_ipconfiguration",
+                  "where isRequestable = 'No'</RSQueryCommandText><RSQueryCommandType>Text</RSQueryCommandType><RSQueryDesignState></RSQueryDesignState>]]></AnnotationContent></Gemini>"
+                ]
+              }
+            ]
+          }
+        ],
+        "annotations": [
+          {
+            "name": "_TM_ExtProp_QueryDefinition",
+            "value": [
+              "select distinct milestoneID as [ID], isrequestable, configuration from ",
+              "v_ipg_carbon_milestone miles",
+              "left join ",
+              "(select isRequestable, ipconfigurationID, name from v_ipg_carbon_ipconfiguration) config",
+              "on miles.configuration = config.name",
+              "where isRequestable = 'No' and ([DevOrg] = 'ipg' or [DevSubOrg] = 'DTEG')",
+              "",
+              "union ",
+              "",
+              "select ipconfigurationID as [ID], isRequestable, name as [configuration] from v_ipg_carbon_ipconfiguration",
+              "where isRequestable = 'No'"
+            ]
+          },
+          {
+            "name": "_TM_ExtProp_DbTableName",
+            "value": "QueryRequestable"
+          },
+          {
+            "name": "QueryEditorSerialization",
+            "value": [
+              "<?xml version=\"1.0\" encoding=\"UTF-16\"?><Gemini xmlns=\"QueryEditorSerialization\"><AnnotationContent><![CDATA[<RSQueryCommandText>select distinct milestoneID as [ID], isrequestable, configuration from ",
+              "v_ipg_carbon_milestone miles",
+              "left join ",
+              "(select isRequestable, ipconfigurationID, name from v_ipg_carbon_ipconfiguration) config",
+              "on miles.configuration = config.name",
+              "where isRequestable = 'No' and ([DevOrg] = 'ipg' or [DevSubOrg] = 'DTEG')",
+              "",
+              "union ",
+              "",
+              "select ipconfigurationID as [ID], isRequestable, name as [configuration] from v_ipg_carbon_ipconfiguration",
+              "where isRequestable = 'No'</RSQueryCommandText><RSQueryCommandType>Text</RSQueryCommandType><RSQueryDesignState></RSQueryDesignState>]]></AnnotationContent></Gemini>"
+            ]
+          }
+        ]
+      }
+    ],
+    "relationships": [
+      {
+        "name": "80c36029-69ca-460b-8405-5b908687511c",
+        "toCardinality": "many",
+        "fromTable": "SoCQuery",
+        "fromColumn": "RequestingProducts",
+        "toTable": "CarbonCombined",
+        "toColumn": "RequestingProducts",
+        "crossFilteringBehavior": "bothDirections"
+      },
+      {
+        "name": "eda4ec5c-4cec-4b5c-b5d8-9cbd724a60c1",
+        "toCardinality": "many",
+        "fromTable": "UsingProductsQuery",
+        "fromColumn": "UsingProducts",
+        "toTable": "CarbonCombined",
+        "toColumn": "UsingProducts",
+        "crossFilteringBehavior": "bothDirections"
+      },
+      {
+        "name": "a53e1117-1ef6-4400-8a1d-4f84f0aeeeb8",
+        "fromTable": "CarbonCombined",
+        "fromColumn": "ID",
+        "toTable": "CarbonBridge",
+        "toColumn": "ID",
+        "crossFilteringBehavior": "bothDirections"
+      },
+      {
+        "name": "d64c5698-9359-4723-9889-9f64a2f1eb8e",
+        "fromTable": "QuerySearchable",
+        "fromColumn": "ID",
+        "toTable": "CarbonBridge",
+        "toColumn": "ID",
+        "crossFilteringBehavior": "bothDirections"
+      },
+      {
+        "name": "ae4929fd-d99f-4af8-a803-68170fc23047",
+        "toCardinality": "many",
+        "fromTable": "CarbonCombined",
+        "fromColumn": "UniqueKey",
+        "toTable": "QueryUnion",
+        "toColumn": "UniqueKey",
+        "isActive": false,
+        "crossFilteringBehavior": "bothDirections"
+      },
+      {
+        "name": "b6739f89-5373-4877-a0a0-bfb959432c43",
+        "toCardinality": "many",
+        "fromTable": "QueryTRM",
+        "fromColumn": "UniqueKey",
+        "toTable": "CarbonCombined",
+        "toColumn": "UniqueKey",
+        "isActive": false,
+        "crossFilteringBehavior": "bothDirections"
+      },
+      {
+        "name": "7662fbae-5859-455b-b370-92e743c60fdf",
+        "toCardinality": "many",
+        "fromTable": "QueryScorecard",
+        "fromColumn": "UniqueKey",
+        "toTable": "CarbonCombined",
+        "toColumn": "UniqueKey",
+        "isActive": false,
+        "crossFilteringBehavior": "bothDirections"
+      },
+      {
+        "name": "3f814ee4-5fa9-47ef-bfc9-67d0bfe1e6b6",
+        "fromTable": "CarbonCombined",
+        "fromColumn": "UniqueKey",
+        "toTable": "QueryDS",
+        "toColumn": "UniqueKey",
+        "isActive": false,
+        "crossFilteringBehavior": "bothDirections"
+      }
+    ],
+    "roles": [
+      {
+        "name": "IPG_InternalUsers",
+        "modelPermission": "read",
+        "members": [
+          {
+            "memberName": "AMR\\IPG_Dashboard_SuperUsers",
+            "memberId": "S-1-5-21-725345543-602162358-527237240-4603439"
+          }
+        ]
+      },
+      {
+        "name": "IPG_Developers",
+        "modelPermission": "administrator",
+        "members": [
+          {
+            "memberName": "AMR\\IPG_Dashboard_Developers",
+            "memberId": "S-1-5-21-725345543-602162358-527237240-4603422"
+          }
+        ]
+      },
+      {
+        "name": "IPG_ExternalUsers",
+        "modelPermission": "read",
+        "members": [
+          {
+            "memberName": "AMR\\IPG_Dashboard_Users",
+            "memberId": "S-1-5-21-725345543-602162358-527237240-4603440"
+          }
+        ]
+      },
+      {
+        "name": "Pas_bis_developer",
+        "modelPermission": "read",
+        "members": [
+          {
+            "memberName": "GER\\pas_bis_developer",
+            "memberId": "S-1-5-21-2052111302-1275210071-1644491937-1027479"
+          }
+        ]
+      },
+      {
+        "name": "DTEG",
+        "modelPermission": "read",
+        "members": [
+          {
+            "memberName": "CORP\\ORGU95484 - PESG DTEG   Design f Test Eng - BB",
+            "memberId": "S-1-5-21-823518204-2139871995-682003330-150586"
+          }
+        ]
+      }
+    ],
+    "annotations": [
+      {
+        "name": "ClientCompatibilityLevel",
+        "value": "600"
+      }
+    ]
+  },
+  "id": "SemanticModel"
+}
